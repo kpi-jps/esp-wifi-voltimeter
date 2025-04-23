@@ -25,6 +25,14 @@ void hasClientConnectedToWiFi()
     digitalWrite(connectionIndicatorPin, LOW);
 }
 
+String extractFromString(String str, String startChars, String endChars)
+{
+    int i = str.indexOf(startChars);
+    int j = str.indexOf(endChars);
+    String result = str.substring(i + startChars.length(), j);
+    return result;
+}
+
 // for basic responses
 void okResponse(WiFiClient client)
 {
@@ -134,6 +142,19 @@ void handleClient(WiFiClient client, String requestHeaders)
     if (requestHeaders.indexOf("GET / ") != -1)
     {
         String path = pagesPath + "index.html";
+        if (LittleFS.exists(path))
+        {
+            okResponse(client, path, "text/html");
+            return;
+        }
+    }
+    // devilery the others page
+    if (requestHeaders.indexOf("GET /pages/") != -1)
+    {
+        Serial.println("pages");
+        String name = extractFromString(requestHeaders, "/pages/", " HTTP");
+        String path = pagesPath + name;
+        Serial.println(path);
         if (LittleFS.exists(path))
         {
             okResponse(client, path, "text/html");
