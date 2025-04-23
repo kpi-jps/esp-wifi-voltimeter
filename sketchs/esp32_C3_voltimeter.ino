@@ -125,6 +125,21 @@ void preFlightResponse(WiFiClient client)
     client.print(responseHeaders);
 }
 
+void handleClient(WiFiClient client, String requestHeaders)
+{
+    // delivery html index page
+    if (requestHeaders.indexOf("GET / ") != -1)
+    {
+        String path = pagesPath + "index.html";
+        if (FFat.exists(path))
+        {
+            okResponse(client, path, "text/html");
+            return;
+        }
+    }
+    notFoundResponse(client)
+}
+
 void setup()
 {
     hasClientConnectedToWiFi();
