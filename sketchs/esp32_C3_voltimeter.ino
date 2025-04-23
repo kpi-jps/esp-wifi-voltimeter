@@ -2,11 +2,29 @@
 #include <FS.h>
 #include <FFat.h>
 
+const int readingIndicatorPin = 6;    // GPIO 6
+const int connectionIndicatorPin = 7; // GPIO 7
+const int analogPin = 0;              // GPIO 0
+
 // Set web server port number to 80
 WiFiServer server(80);
 
-void setup() {
+void hasClientConnectedToWiFi()
+{
+    if (WiFi.softAPgetStationNum() > 0)
+    {
+        digitalWrite(connectionIndicatorPin, HIGH);
+        return;
+    }
+    digitalWrite(connectionIndicatorPin, LOW);
+}
+
+void setup()
+{
+    hasClientConnectedToWiFi();
     Serial.begin(115200);
+    pinMode(readingIndicatorPin, OUTPUT);
+    pinMode(connectionIndicatorPin, OUTPUT);
     WiFi.setSleepMode(WIFI_NONE_SLEEP);
     if (!WiFi.softAP("Voltimeter", "0123456789", 1, 0, 1))
     {

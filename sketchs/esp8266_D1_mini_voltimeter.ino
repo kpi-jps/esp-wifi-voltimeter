@@ -2,12 +2,28 @@
 #include <FS.h>
 #include <LittleFS.h>
 
+const int readingIndicatorPin = 12;    // D6
+const int connectionIndicatorPin = 13; // D7
+const int analogPin = 0;               // A0
+
 // Set web server port number to 80
 WiFiServer server(80);
+
+void hasClientConnectedToWiFi()
+{
+    if (WiFi.softAPgetStationNum() > 0)
+    {
+        digitalWrite(connectionIndicatorPin, HIGH);
+        return;
+    }
+    digitalWrite(connectionIndicatorPin, LOW);
+}
 
 void setup()
 {
     Serial.begin(115200);
+    pinMode(readingIndicatorPin, OUTPUT);
+    pinMode(connectionIndicatorPin, OUTPUT);
     WiFi.setSleepMode(WIFI_NONE_SLEEP);
     if (!WiFi.softAP("Voltimeter", "0123456789", 1, 0, 1))
     {
@@ -22,6 +38,7 @@ void setup()
 
 void loop()
 {
+    hasClientConnectedToWiFi();
     WiFiClient client = server.available();
     if (client)
     {
