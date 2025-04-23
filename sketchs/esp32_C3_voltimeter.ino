@@ -283,45 +283,6 @@ void handleClient(WiFiClient client, String requestHeaders)
                 file = root.openNextFile();
             }
         }
-        // start recording
-        if (requestHeaders.indexOf("GET /start?name=") != -1 && requestHeaders.indexOf("&time=") != -1)
-        {
-            String name = extractFromString(requestHeaders, "?name=", "&");
-            int delay = extractFromString(requestHeaders, "&time=", " HTTP").toInt();
-            if (slot.recording)
-            {
-                forbidden(client);
-                return;
-            }
-            if (name.isEmpty() || name.length() > 20 || delay < 5000)
-            {
-                badRequest(client);
-                return;
-            }
-            String path = recordsPath + name;
-            if (FFat.exists(path))
-            {
-                forbidden(client);
-                return;
-            }
-            slot.filePath = path;
-            slot.delay = delay;
-            slot.recording = true;
-            recording();
-            okResponse(client);
-            return;
-        }
-
-        // stop recording
-        if (requestHeaders.indexOf("GET /stop") != -1)
-        {
-            slot.filePath = "";
-            slot.time = 0;
-            slot.delay = 0;
-            slot.recording = false;
-            okResponse(client);
-            return;
-        }
         okResponse(client);
         return;
     }
@@ -374,6 +335,45 @@ void handleClient(WiFiClient client, String requestHeaders)
             okResponse(client);
             return;
         }
+    }
+    // start recording
+    if (requestHeaders.indexOf("GET /start?name=") != -1 && requestHeaders.indexOf("&time=") != -1)
+    {
+        String name = extractFromString(requestHeaders, "?name=", "&");
+        int delay = extractFromString(requestHeaders, "&time=", " HTTP").toInt();
+        if (slot.recording)
+        {
+            forbidden(client);
+            return;
+        }
+        if (name.isEmpty() || name.length() > 20 || delay < 5000)
+        {
+            badRequest(client);
+            return;
+        }
+        String path = recordsPath + name;
+        if (FFat.exists(path))
+        {
+            forbidden(client);
+            return;
+        }
+        slot.filePath = path;
+        slot.delay = delay;
+        slot.recording = true;
+        recording();
+        okResponse(client);
+        return;
+    }
+
+    // stop recording
+    if (requestHeaders.indexOf("GET /stop") != -1)
+    {
+        slot.filePath = "";
+        slot.time = 0;
+        slot.delay = 0;
+        slot.recording = false;
+        okResponse(client);
+        return;
     }
     notFoundResponse(client)
 }
