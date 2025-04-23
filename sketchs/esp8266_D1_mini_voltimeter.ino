@@ -6,6 +6,12 @@ const int readingIndicatorPin = 12;    // D6
 const int connectionIndicatorPin = 13; // D7
 const int analogPin = 0;               // A0
 
+// Store the FS storage info
+FSInfo fsInfo;
+
+const String recordsPath = "/records/";
+const String pagesPath = "/pages/";
+
 // Set web server port number to 80
 WiFiServer server(80);
 
@@ -24,6 +30,11 @@ void setup()
     Serial.begin(115200);
     pinMode(readingIndicatorPin, OUTPUT);
     pinMode(connectionIndicatorPin, OUTPUT);
+    if (!LittleFS.begin())
+    {
+        Serial.println("LittleFS Mount Failed");
+        while(true);
+    }
     WiFi.setSleepMode(WIFI_NONE_SLEEP);
     if (!WiFi.softAP("Voltimeter", "0123456789", 1, 0, 1))
     {

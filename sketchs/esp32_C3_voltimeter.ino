@@ -9,6 +9,9 @@ const int analogPin = 0;              // GPIO 0
 // Set web server port number to 80
 WiFiServer server(80);
 
+const String recordsPath = "/records/";
+const String pagesPath = "/pages/";
+
 void hasClientConnectedToWiFi()
 {
     if (WiFi.softAPgetStationNum() > 0)
@@ -25,6 +28,11 @@ void setup()
     Serial.begin(115200);
     pinMode(readingIndicatorPin, OUTPUT);
     pinMode(connectionIndicatorPin, OUTPUT);
+    if (!FFat.begin())
+    {
+        Serial.println("FFat Mount Failed");
+        while (true);
+    }
     WiFi.setSleepMode(WIFI_NONE_SLEEP);
     if (!WiFi.softAP("Voltimeter", "0123456789", 1, 0, 1))
     {
