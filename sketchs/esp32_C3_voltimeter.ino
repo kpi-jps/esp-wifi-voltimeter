@@ -192,6 +192,51 @@ void handleClient(WiFiClient client, String requestHeaders)
             return;
         }
     }
+    // list all pages
+    if (requestHeaders.indexOf("GET /list/pages ") != -1)
+    {
+        String content = "[";
+        File root = FFat.open(pagesPath, "r");
+        if (root && root.isDirectory())
+        {
+            File file = root.openNextFile();
+            if (file)
+            {
+                content += "\"";
+                content += String(file.name());
+                content += "\"";
+                file = root.openNextFile();
+                while (file)
+                {
+                    content += ", \"";
+                    content += String(file.name());
+                    content += "\"";
+                    file = root.openNextFile();
+                }
+            }
+        }
+        content += "]";
+        okResponse(client, content);
+        return;
+    }
+    // clear all pages
+    if (requestHeaders.indexOf("GET /clear/pages ") != -1)
+    {
+        File root = FFat.open(pagesPath, "r");
+        if (root && root.isDirectory())
+        {
+            File file = root.openNextFile();
+            while (file)
+            {
+                String name = String(file.name());
+                String path = pagesPath + name;
+                LittleFS.remove(path);
+                file = root.openNextFile();
+            }
+        }
+        okResponse(client);
+        return;
+    }
     // list all record
     if (requestHeaders.indexOf("GET /records ") != -1)
     {
@@ -223,7 +268,7 @@ void handleClient(WiFiClient client, String requestHeaders)
     if (requestHeaders.indexOf("GET /records/get?name=") != -1)
     {
         String name = extractFromString(requestHeaders, "?name=", " HTTP");
-        const String path = recordsPath + name;
+        String path = recordsPath + name;
         if (FFat.exists(path))
         {
             okResponse(client, path, "text/plain");
@@ -234,7 +279,7 @@ void handleClient(WiFiClient client, String requestHeaders)
     if (requestHeaders.indexOf("GET /records/del?name=") != -1)
     {
         String name = extractFromString(requestHeaders, "?name=", " HTTP");
-        const String path = recordsPath + name;
+        String path = recordsPath + name;
         if (FFat.exists(path))
         {
             FFat.remove(path);
