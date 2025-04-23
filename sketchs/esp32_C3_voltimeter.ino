@@ -22,6 +22,109 @@ void hasClientConnectedToWiFi()
     digitalWrite(connectionIndicatorPin, LOW);
 }
 
+// for basic responses
+void okResponse(WiFiClient client)
+{
+    String content = "{\"response\" : \"OK\" }";
+    String responseHeaders = "HTTP/1.1 200 OK\n";
+    responseHeaders += "Access-Control-Allow-Origin: *\n";
+    responseHeaders += "Connection: Keep-Alive\n";
+    responseHeaders += "Keep-Alive: timeout=10, max=200\n";
+    responseHeaders += "Content-type: application/json \n";
+    responseHeaders += "Content-Length:" + String(content.length()) + "\n";
+    responseHeaders += "\n";
+    Serial.println(responseHeaders + "\n");
+    client.print(responseHeaders);
+    client.print(content);
+}
+
+// for files
+void okResponse(WiFiClient client, String filePath, String contentType)
+{
+    File file = FFat.open(filePath, "r");
+    String responseHeaders = "HTTP/1.1 200 OK\n";
+    responseHeaders += "Access-Control-Allow-Origin: *\n";
+    responseHeaders += "Connection: Keep-Alive\n";
+    responseHeaders += "Keep-Alive: timeout=10, max=200\n";
+    responseHeaders += "Content-type: " + contentType + " \n";
+    responseHeaders += "Content-Length:" + String(file.size()) + "\n";
+    responseHeaders += "\n";
+    Serial.println(responseHeaders);
+    client.print(responseHeaders);
+    long count = 0;
+    while (count < file.size())
+    {
+        char c = file.read();
+        client.print(c);
+        count++;
+    }
+    file.close();
+}
+
+// for JSON
+void okResponse(WiFiClient client, String content)
+{
+    String responseHeaders = "HTTP/1.1 200 OK\n";
+    responseHeaders += "Access-Control-Allow-Origin: *\n";
+    responseHeaders += "Connection: Keep-Alive\n";
+    responseHeaders += "Keep-Alive: timeout=10, max=200\n";
+    responseHeaders += "Content-type: application/json \n";
+    responseHeaders += "Content-Length:" + String(content.length()) + "\n";
+    responseHeaders += "\n";
+    Serial.println(responseHeaders + "\n");
+    client.print(responseHeaders);
+    client.print(content);
+}
+
+void badRequest(WiFiClient client)
+{
+    String content = "{\"response\" : \"Bad Request\"}";
+    String responseHeaders = "HTTP/1.1 400 Bad Request \n";
+    responseHeaders += "Access-Control-Allow-Origin: *\n";
+    responseHeaders += "Content-type: application/json \n";
+    responseHeaders += "Content-Length:" + String(content.length()) + "\n";
+    responseHeaders += "\n";
+    Serial.println(responseHeaders + "\n");
+    client.print(responseHeaders + content);
+}
+
+void forbidden(WiFiClient client)
+{
+    String content = "{\"response\" : \" Forbidden\"}";
+    String responseHeaders = "HTTP/1.1 403 Forbidden \n";
+    responseHeaders += "Access-Control-Allow-Origin: *\n";
+    responseHeaders += "Content-type: application/json \n";
+    responseHeaders += "Content-Length:" + String(content.length()) + "\n";
+    responseHeaders += "\n";
+    Serial.println(responseHeaders + "\n");
+    client.print(responseHeaders + content);
+}
+
+void notFoundResponse(WiFiClient client)
+{
+    String content = "{\"response\" : \"Not Found\"}";
+    String responseHeaders = "HTTP/1.1 404 Not Found \n";
+    responseHeaders += "Access-Control-Allow-Origin: *\n";
+    responseHeaders += "Content-type: application/json \n";
+    responseHeaders += "Content-Length:" + String(content.length()) + "\n";
+    responseHeaders += "\n";
+    Serial.println(responseHeaders + "\n");
+    client.print(responseHeaders + content);
+}
+
+void preFlightResponse(WiFiClient client)
+{
+    String responseHeaders = "HTTP/1.1 204 No Content\n";
+    responseHeaders += "Connection: Keep-Alive\n";
+    responseHeaders += "Keep-Alive: timeout=10, max=200\n";
+    responseHeaders += "Access-Control-Allow-Origin: *\n";
+    responseHeaders += "Access-Control-Allow-Methods: POST, GET\n";
+    responseHeaders += "Access-Control-Allow-Headers: access-control-allow-origin,content-disposition,content-type\n";
+    responseHeaders += "\n";
+    Serial.println(responseHeaders + "\n");
+    client.print(responseHeaders);
+}
+
 void setup()
 {
     hasClientConnectedToWiFi();
@@ -31,7 +134,8 @@ void setup()
     if (!FFat.begin())
     {
         Serial.println("FFat Mount Failed");
-        while (true);
+        while (true)
+            ;
     }
     WiFi.setSleepMode(WIFI_NONE_SLEEP);
     if (!WiFi.softAP("Voltimeter", "0123456789", 1, 0, 1))
