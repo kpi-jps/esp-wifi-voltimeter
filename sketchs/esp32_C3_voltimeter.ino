@@ -11,6 +11,14 @@ WiFiServer server(80);
 
 const String recordsPath = "/records/";
 const String pagesPath = "/pages/";
+// Stores the files info during the saving process
+struct RecordingSlot
+{
+    String filePath = "";
+    unsigned long time = 0;
+    unsigned long delay = 0;
+    bool recording = false;
+};
 
 void hasClientConnectedToWiFi()
 {
@@ -20,6 +28,47 @@ void hasClientConnectedToWiFi()
         return;
     }
     digitalWrite(connectionIndicatorPin, LOW);
+}
+
+int getPotentialInMilliVolts()
+{
+    /*
+      calibration obtained for the circuit:
+      Vadc / mv = 1100 + 0.935 Vm (R^2 = 1)
+      Vadc = potential obtained by adc board ESP32C3 (average value)
+      Vm = potential measured by the voltimeter
+    */
+    int sum = 0;
+    int n = 50;
+    // gets the average value for 50 replica
+    for (int i = 0; i < n; i++)
+    {
+        sum += analogRead(analogPin);
+        delay(1);
+    }
+    int vadc = (int)(sum / n) * 3300 / 1024;
+    int vm = (int)(vadc - 1110) / 0.935;
+    return vm;
+}
+
+void recording()
+{
+    const String path = slot.filePath;
+    int v = getPotentialInMilliVolts();
+    String content = String(slot.time) + ";" + String(v) + "\n";
+    File file = FFat.open(path, "a");
+    file.println(content);
+    file.close();
+}
+
+void checkForRecording()
+{
+    long time = millis() - slot.time;
+    if (slot.recording && time >= slot.delay)
+    {
+        slot.time += time;
+        recording();
+    }
 }
 
 String extractFromString(String str, String startChars, String endChars)
@@ -354,4 +403,6 @@ void loop()
         client.stop();
         Serial.println("client disconnected...");
     }
+    checkForRecording();
+    delay(100);
 }
