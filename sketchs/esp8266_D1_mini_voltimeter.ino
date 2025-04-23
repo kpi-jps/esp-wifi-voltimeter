@@ -392,7 +392,7 @@ void handleClient(WiFiClient client, String requestHeaders)
         return;
     }
 
-    notFoundResponse(client)
+    notFoundResponse(client);
 }
 
 void setup()
