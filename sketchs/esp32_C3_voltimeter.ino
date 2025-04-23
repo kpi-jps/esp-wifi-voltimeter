@@ -19,7 +19,7 @@ struct RecordingSlot
     unsigned long delay = 0;
     bool recording = false;
 };
-
+RecordingSlot slot;
 void hasClientConnectedToWiFi()
 {
     if (WiFi.softAPgetStationNum() > 0)
@@ -53,7 +53,7 @@ int getPotentialInMilliVolts()
 
 void recording()
 {
-    const String path = slot.filePath;
+    String path = slot.filePath;
     int v = getPotentialInMilliVolts();
     String content = String(slot.time) + ";" + String(v) + "\n";
     File file = FFat.open(path, "a");
@@ -184,7 +184,7 @@ void preFlightResponse(WiFiClient client)
 
 long uploadFile(WiFiClient client, String fileName)
 {
-    const String path = pagesPath + fileName;
+    String path = pagesPath + fileName;
     long bytes;
     if (FFat.exists(path))
         FFat.remove(path);
@@ -279,7 +279,7 @@ void handleClient(WiFiClient client, String requestHeaders)
             {
                 String name = String(file.name());
                 String path = pagesPath + name;
-                LittleFS.remove(path);
+                FFat.remove(path);
                 file = root.openNextFile();
             }
         }
@@ -385,7 +385,7 @@ void handleClient(WiFiClient client, String requestHeaders)
         okResponse(client, content);
         return;
     }
-    notFoundResponse(client)
+    notFoundResponse(client);
 }
 
 void setup()
@@ -400,7 +400,7 @@ void setup()
         while (true)
             ;
     }
-    WiFi.setSleepMode(WIFI_NONE_SLEEP);
+    WiFi.setSleep(false);
     if (!WiFi.softAP("Voltimeter", "0123456789", 1, 0, 1))
     {
         Serial.println("Webserver failed starting...");

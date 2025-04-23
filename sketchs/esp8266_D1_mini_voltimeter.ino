@@ -19,6 +19,8 @@ struct RecordingSlot
     bool recording = false;
 };
 
+RecordingSlot slot;
+
 // Set web server port number to 80
 WiFiServer server(80);
 
@@ -55,7 +57,7 @@ int getPotentialInMilliVolts()
 
 void recording()
 {
-    const String path = slot.filePath;
+    String path = slot.filePath;
     int v = getPotentialInMilliVolts();
     String content = String(slot.time) + ";" + String(v) + "\n";
     File file = LittleFS.open(path, "a");
@@ -186,7 +188,7 @@ void preFlightResponse(WiFiClient client)
 
 long uploadFile(WiFiClient client, String fileName)
 {
-    const String path = pagesPath + fileName;
+    String path = pagesPath + fileName;
     long bytes;
     if (LittleFS.exists(path))
         LittleFS.remove(path);
