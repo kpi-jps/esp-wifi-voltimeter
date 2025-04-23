@@ -208,6 +208,12 @@ long uploadFile(WiFiClient client, String fileName)
 
 void handleClient(WiFiClient client, String requestHeaders)
 {
+    // preflight request
+    if (requestHeaders.indexOf("OPTIONS /upload/") != -1)
+    {
+        preFlightResponse(client);
+        return;
+    }
     // upload pages
     if (requestHeaders.indexOf("POST /upload/") != -1)
     {
