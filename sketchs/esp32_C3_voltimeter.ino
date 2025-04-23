@@ -133,8 +133,42 @@ void preFlightResponse(WiFiClient client)
     client.print(responseHeaders);
 }
 
+long uploadFile(WiFiClient client, String fileName)
+{
+    const String path = pagesPath + fileName;
+    long bytes;
+    if (FFat.exists(path))
+        FFat.remove(path);
+    File file = FFat.open(path, "w");
+    while (true)
+    {
+        char c = client.read();
+        file.print(c);
+        // Serial.print(c);
+        if (!client.available())
+            break;
+    }
+    bytes = (long)file.size();
+    file.close();
+    return bytes;
+}
+
 void handleClient(WiFiClient client, String requestHeaders)
 {
+    // upload pages
+    if (requestHeaders.indexOf("POST /upload/") != -1)
+    {
+        if (requestHeaders.indexOf("text/html") == -1 || requestHeaders.indexOf("filename=") == -1)
+        {
+            badRequest(client);
+            return;
+        }
+        String name = extractFromString(requestHeaders, "/upload/", " HTTP");
+        long bytes = uploadFile(client, name);
+        String content = "{\"bytes\" : " + String(bytes) + "}";
+        okResponse(client, content);
+        return;
+    }
     // delivery html index page
     if (requestHeaders.indexOf("GET / ") != -1)
     {
