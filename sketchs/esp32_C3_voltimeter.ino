@@ -192,6 +192,56 @@ void handleClient(WiFiClient client, String requestHeaders)
             return;
         }
     }
+    // list all record
+    if (requestHeaders.indexOf("GET /records ") != -1)
+    {
+        String content = "[";
+        File root = FFat.open(recordsPath, "r");
+        if (root && root.isDirectory())
+        {
+            File file = root.openNextFile();
+            if (file)
+            {
+                content += "\"";
+                content += String(file.name());
+                content += "\"";
+                file = root.openNextFile();
+                while (file)
+                {
+                    content += ", \"";
+                    content += String(file.name());
+                    content += "\"";
+                    file = root.openNextFile();
+                }
+            }
+        }
+        content += "]";
+        okResponse(client, content);
+        return;
+    }
+    // get a record (txt file)
+    if (requestHeaders.indexOf("GET /records/get?name=") != -1)
+    {
+        String name = extractFromString(requestHeaders, "?name=", " HTTP");
+        const String path = recordsPath + name;
+        if (FFat.exists(path))
+        {
+            okResponse(client, path, "text/plain");
+            return;
+        }
+    }
+    // delete a record
+    if (requestHeaders.indexOf("GET /records/del?name=") != -1)
+    {
+        String name = extractFromString(requestHeaders, "?name=", " HTTP");
+        const String path = recordsPath + name;
+        if (FFat.exists(path))
+        {
+            FFat.remove(path);
+            okResponse(client);
+            return;
+        }
+    }
     notFoundResponse(client)
 }
 
