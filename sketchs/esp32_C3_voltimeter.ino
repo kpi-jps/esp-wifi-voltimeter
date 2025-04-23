@@ -375,6 +375,16 @@ void handleClient(WiFiClient client, String requestHeaders)
         okResponse(client);
         return;
     }
+    if (requestHeaders.indexOf("GET /readings") != -1)
+    {
+        String content = "{\"totalBytes\" : " + String(FFat.totalBytes());
+        content += ", \"usedBytes\" : " + String(FFat.usedBytes());
+        content += ", \"recording\" : " + String((slot.recording) ? "true" : "false");
+        content += ", \"millivolts\" : " + String(getPotentialInMilliVolts());
+        content += "}";
+        okResponse(client, content);
+        return;
+    }
     notFoundResponse(client)
 }
 

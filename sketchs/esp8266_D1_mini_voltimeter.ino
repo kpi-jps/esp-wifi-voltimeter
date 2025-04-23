@@ -378,6 +378,18 @@ void handleClient(WiFiClient client, String requestHeaders)
         return;
     }
 
+    if (requestHeaders.indexOf("GET /readings") != -1)
+    {
+        LittleFS.info(fsInfo);
+        String content = "{\"totalBytes\" : " + String(fsInfo.totalBytes);
+        content += ", \"usedBytes\" : " + String(fsInfo.usedBytes);
+        content += ", \"recording\" : " + String((slot.recording) ? "true" : "false");
+        content += ", \"millivolts\" : " + String(getPotentialInMilliVolts());
+        content += "}";
+        okResponse(client, content);
+        return;
+    }
+
     notFoundResponse(client)
 }
 
