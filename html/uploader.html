@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML Uploader</title>
+    <style>
+        body,
+        button,
+        input {
+            font-family: Verdana, Geneva, Tahoma, sans-serif;
+            font-size: 1rem;
+        }
+
+        a {
+            text-decoration: none;
+        }
+
+        input[type=file] {
+            display: none;
+        }
+
+        input[type=text] {
+            border: 0;
+            border-bottom: 3px solid black;
+            width: 4ch;
+        }
+
+        body {
+            width: 600px;
+            margin: 5px auto;
+            border: 0 solid black;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        form {
+            margin: 0 auto;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        #output {
+            border: 1px solid black;
+            height: 100px;
+            width: 100%;
+            overflow: auto;
+            padding: 5px;
+            border-radius: 5px;
+            margin: 5px 0;
+            color: lightslategray;
+        }
+
+        .row {
+            padding: 10px 0;
+            margin: 10px 0;
+        }
+
+        #error {
+            padding: 10px;
+            margin: 30px 0;
+            color: red;
+            font-weight: bold;
+            border: 1px solid red;
+            border-radius: 5px;
+            background-color: lightpink;
+            line-height: 2rem;
+        }
+
+        #close {
+            font-size: 1.5rem;
+            cursor: default;
+        }
+
+        #close:hover {
+            color: lightcoral
+        }
+
+        #close {
+            float: right;
+        }
+
+        #info {
+            font-weight: normal;
+        }
+
+        button,
+        a {
+            padding: 10px;
+            border: 3px solid black;
+            border-radius: 5px;
+            background-color: black;
+            color: rgb(249, 248, 248);
+            font-weight: bold;
+        }
+
+        button:hover,
+        a:hover {
+            background-color: rgb(249, 248, 248);
+            color: black;
+        }
+
+        .rounded-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 100%;
+            padding: 0px;
+            background-color: black;
+            color: rgb(249, 248, 248);
+            text-align: center;
+        }
+
+        .rounded-btn:hover {
+            background-color: rgb(249, 248, 248);
+            color: black;
+        }
+
+        .file-info,
+        #upload-info {
+            color: lightseagreen;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>HTML Uploader</h2>
+    <form>
+        <div class="row input">
+            Upload html file:
+            <input type="file" id="file" accept="text/html">
+            <button id="upload" class="rounded-btn">&uarr;</button>
+            <small id="info" class="file-info"></small>
+        </div>
+    </form>
+    <div class="row">
+        <button id="send" class="input"> Send </button>
+    </div>
+    <div class="row" id="upload-info"></div>
+</body>
+
+</html>
