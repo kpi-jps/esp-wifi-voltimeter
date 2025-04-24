@@ -37,11 +37,11 @@ void hasClientConnectedToWiFi()
 int getPotentialInMilliVolts()
 {
     /*
-      calibration obtained for the circuit:
-      Vadc / mv = 1100 + 0.935 Vm (R^2 = 1)
-      Vadc = potential obtained by adc board ESP32C3 (average value)
-      Vm = potential measured by the voltimeter
-    */
+        calibration obtained for the circuit:
+        Vadc / mv = 1100 + 0.935 Vm (R^2 = 1)
+        Vadc = potential obtained by adc board ESP32C3 (average value)
+        Vm = potential measured by the voltimeter
+      */
     int sum = 0;
     int n = 50;
     // gets the average value for 50 replica
@@ -189,26 +189,23 @@ void preFlightResponse(WiFiClient client)
 long uploadFile(WiFiClient client, String fileName)
 {
     String path = pagesPath + fileName;
-    long bytes;
+    long bytes = 0;
     if (LittleFS.exists(path))
         LittleFS.remove(path);
     File file = LittleFS.open(path, "w");
-    while (true)
+    while (client.available())
     {
         char c = client.read();
         file.print(c);
-        // Serial.print(c);
-        if (!client.available())
-            break;
+        bytes++;
     }
-    bytes = (long)file.size();
     file.close();
     return bytes;
 }
 
 void handleClient(WiFiClient client, String requestHeaders)
 {
-    // preflight request
+    // preflight
     if (requestHeaders.indexOf("OPTIONS /upload/") != -1)
     {
         preFlightResponse(client);
@@ -378,6 +375,11 @@ void handleClient(WiFiClient client, String requestHeaders)
     // stop recording
     if (requestHeaders.indexOf("GET /stop") != -1)
     {
+        if (!slot.recording)
+        {
+            badRequest(client);
+            return;
+        }
         slot.filePath = "";
         slot.time = 0;
         slot.delay = 0;
@@ -413,7 +415,7 @@ void setup()
             ;
     }
     WiFi.setSleepMode(WIFI_NONE_SLEEP);
-    if (!WiFi.softAP("Voltimeter", "0123456789", 1, 0, 1))
+    if (!WiFi.softAP("Voltimeter(esp8266)", "0123456789", 1, 0, 1))
     {
         Serial.println("Webserver failed starting...");
         return;
