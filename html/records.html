@@ -78,4 +78,62 @@
     </div>
 </body>
 
+<script>
+    window.addEventListener("load", async (e) => {
+        const mainUrl = "http://192.168.4.1/"
+        const back = document.getElementById("back")
+        const records = document.getElementById("records")
+        const download = document.getElementById("download")
+        const del = document.getElementById("del")
+        let files = []
+        back.href = mainUrl
+        records.addEventListener("change", (e) => download.href = `${mainUrl}records/get?name=${records.value}`)
+        download.addEventListener("click", async (e) => {
+            if (!download.href) {
+                e.preventDefault()
+                alert("Choose a file to download!")
+                return
+            }
+        })
+        del.addEventListener("click", async (e) => {
+            try {
+                if (!records.value) {
+                    alert("Choose a file to delete!")
+                    return
+                }
+                const ok = confirm(`Are you sure want to delete the record ${records.value}?`)
+                if (ok) {
+                    const response = await fetch(`${mainUrl}records/del?name=${records.value}`)
+                    if (response.ok) {
+                        alert("The file was deleted!")
+                        window.location.reload();
+                        return
+                    }
+                    alert("Resources not found!")
+                }
+            } catch (error) {
+                console.log(error)
+            }
+        })
+        try {
+            const response = await fetch(`${mainUrl}records`)
+            if (response.ok) {
+                files = await response.json()
+                records.innerHTML = ""
+                for (const file of files) {
+                    const option = document.createElement("option")
+                    option.value = file
+                    option.innerText = file
+                    records.append(option)
+                }
+                download.href = `${mainUrl}records/get?name=${records.value}`
+                return
+            }
+            alert("Resources not found!")
+        } catch (error) {
+            console.log(error)
+        }
+    })
+</script>
+
 </html>
