@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voltimeter</title>
+    <style>
+        body,
+        button,
+        input {
+            font-family: Verdana, Geneva, Tahoma, sans-serif;
+            font-size: 1.05rem;
+        }
+
+        a {
+            text-decoration: none;
+            margin-right: 5px;
+        }
+
+        body {
+            width: 600px;
+            margin: 5px auto;
+            border: 2px solid gray;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .row {
+            padding: 10px 0;
+            margin: 10px 0;
+        }
+
+        button,
+        a {
+            padding: 10px;
+            border: 3px solid black;
+            border-radius: 5px;
+            background-color: black;
+            color: rgb(249, 248, 248);
+            font-weight: bold;
+        }
+
+        button:hover,
+        a:hover {
+            background-color: rgb(249, 248, 248);
+            color: black;
+        }
+
+        .display {
+            font-weight: bold;
+            font-size: 3rem;
+            padding: 5px;
+            color: lightseagreen;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                width: 85%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Voltimeter</h1>
+    <div class="row">
+        <div class="display"> <span id="potential">0</span> mv</div>
+    </div>
+    <div class="row">
+        <button id="start"> Start </button>
+        <button id="stop"> Stop </button>
+        <a id="records" href=""> Records </a>
+    </div>
+    <div class="row">
+        Used storage: <span id="storage">-</span> % | <span id="recording"></span>
+    </div>
+</body>
+
+</html>
