@@ -77,4 +77,69 @@
     </div>
 </body>
 
+<script>
+    window.addEventListener("load", (e) => {
+        const mainUrl = "http://192.168.4.1/"
+        document.getElementById("records").href = mainUrl + "pages/records.html"
+        document.getElementById("start").addEventListener("click", async (e) => {
+            try {
+                e.preventDefault()
+                const name = prompt("Type a name to the record (max 20 characters):")
+                if (name.length > 20) {
+                    alert("Invalid name length, only 20 characters are allowed!")
+                    console.log(name)
+                    return
+                }
+                const time = prompt("Type a time interval, in seconds, for recording (>= 5)")
+                if (!time) return
+                if (isNaN(Number(time)) || Math.floor(Number(time * 1000)) < 5000) {
+                    console.log(Number(time))
+                    alert("Invalid time interval, only numbers high than 5000 are allowed!")
+                    console.log(time)
+                    return
+                }
+                const response = await fetch(`${mainUrl}start?name=${name}.txt&time=${Math.floor(Number(time * 1000))}`)
+                if (response.ok) alert("Start recording!")
+                if (response.status === 400) alert("Invalid name or time used in recording!")
+                if (response.status === 403) alert("Name already used!")
+                if (response.status === 404) alert("Resource not found!")
+            } catch (error) {
+                console.log(error)
+            }
+        })
+        document.getElementById("stop").addEventListener("click", async (e) => {
+            e.preventDefault()
+            try {
+                const response = await fetch(`${mainUrl}stop`)
+                if (response.ok) alert("Stop recording!")
+                if (response.status === 400) alert("No recording in progress!")
+            } catch (error) {
+                console.log(error)
+            }
+        })
+        let interval = setInterval(async () => {
+            try {
+                const recordingText = "Recording"
+                const response = await fetch(`${mainUrl}readings`)
+                if (response.ok) {
+                    const potential = document.getElementById("potential")
+                    const recording = document.getElementById("recording")
+                    const storage = document.getElementById("storage")
+                    const json = await response.json()
+                    potential.innerText = json.millivolts
+                    recording.innerText = !json.recording ? "" :
+                        recording.innerText === "" ? recordingText :
+                            recording.innerText.length < recordingText.length + 3 ? recording.innerText + "." :
+                                recordingText
+                    storage.innerText = ((json.usedBytes / json.totalBytes) * 100).toFixed(0)
+                    return
+                }
+                if (response.status === 500) clearInterval(interval)
+            } catch (error) {
+                console.log(error)
+            }
+        }, 2000)
+    })
+</script>
+
 </html>
