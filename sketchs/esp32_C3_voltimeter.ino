@@ -1,17 +1,16 @@
-#include <WiFi.h>
+#include <ESP8266WiFi.h>
 #include <FS.h>
-#include <FFat.h>
+#include <LittleFS.h>
 
-const int readingIndicatorPin = 6;    // GPIO 6
-const int connectionIndicatorPin = 7; // GPIO 7
-const int analogPin = 0;              // GPIO 0
+const int readingIndicatorPin = 12;    // D6
+const int connectionIndicatorPin = 13; // D7
+const int analogPin = 0;               // A0
 
-// Set web server port number to 80
-WiFiServer server(80);
+// Store the FS storage info
+FSInfo fsInfo;
 
 const String recordsPath = "/records/";
 const String pagesPath = "/pages/";
-// Stores the files info during the saving process
 struct RecordingSlot
 {
     String filePath = "";
@@ -19,7 +18,12 @@ struct RecordingSlot
     unsigned long delay = 0;
     bool recording = false;
 };
+
 RecordingSlot slot;
+
+// Set web server port number to 80
+WiFiServer server(80);
+
 void hasClientConnectedToWiFi()
 {
     if (WiFi.softAPgetStationNum() > 0)
@@ -33,11 +37,11 @@ void hasClientConnectedToWiFi()
 int getPotentialInMilliVolts()
 {
     /*
-      calibration obtained for the circuit:
-      Vadc / mv = 1100 + 0.935 Vm (R^2 = 1)
-      Vadc = potential obtained by adc board ESP32C3 (average value)
-      Vm = potential measured by the voltimeter
-    */
+        calibration obtained for the circuit:
+        Vadc / mv = 1100 + 0.935 Vm (R^2 = 1)
+        Vadc = potential obtained by adc board ESP32C3 (average value)
+        Vm = potential measured by the voltimeter
+      */
     int sum = 0;
     int n = 50;
     // gets the average value for 50 replica
@@ -56,7 +60,7 @@ void recording()
     String path = slot.filePath;
     int v = getPotentialInMilliVolts();
     String content = String(slot.time) + ";" + String(v) + "\n";
-    File file = FFat.open(path, "a");
+    File file = LittleFS.open(path, "a");
     file.println(content);
     file.close();
 }
@@ -98,7 +102,7 @@ void okResponse(WiFiClient client)
 // for files
 void okResponse(WiFiClient client, String filePath, String contentType)
 {
-    File file = FFat.open(filePath, "r");
+    File file = LittleFS.open(filePath, "r");
     String responseHeaders = "HTTP/1.1 200 OK\n";
     responseHeaders += "Access-Control-Allow-Origin: *\n";
     responseHeaders += "Connection: Keep-Alive\n";
@@ -186,9 +190,9 @@ long uploadFile(WiFiClient client, String fileName)
 {
     String path = pagesPath + fileName;
     long bytes;
-    if (FFat.exists(path))
-        FFat.remove(path);
-    File file = FFat.open(path, "w");
+    if (LittleFS.exists(path))
+        LittleFS.remove(path);
+    File file = LittleFS.open(path, "w");
     while (true)
     {
         char c = client.read();
@@ -204,7 +208,7 @@ long uploadFile(WiFiClient client, String fileName)
 
 void handleClient(WiFiClient client, String requestHeaders)
 {
-    // preflight request
+    // preflight
     if (requestHeaders.indexOf("OPTIONS /upload/") != -1)
     {
         preFlightResponse(client);
@@ -228,7 +232,7 @@ void handleClient(WiFiClient client, String requestHeaders)
     if (requestHeaders.indexOf("GET / ") != -1)
     {
         String path = pagesPath + "index.html";
-        if (FFat.exists(path))
+        if (LittleFS.exists(path))
         {
             okResponse(client, path, "text/html");
             return;
@@ -241,7 +245,7 @@ void handleClient(WiFiClient client, String requestHeaders)
         String name = extractFromString(requestHeaders, "/pages/", " HTTP");
         String path = pagesPath + name;
         Serial.println(path);
-        if (FFat.exists(path))
+        if (LittleFS.exists(path))
         {
             okResponse(client, path, "text/html");
             return;
@@ -251,7 +255,7 @@ void handleClient(WiFiClient client, String requestHeaders)
     if (requestHeaders.indexOf("GET /list/pages ") != -1)
     {
         String content = "[";
-        File root = FFat.open(pagesPath, "r");
+        File root = LittleFS.open(pagesPath, "r");
         if (root && root.isDirectory())
         {
             File file = root.openNextFile();
@@ -277,7 +281,7 @@ void handleClient(WiFiClient client, String requestHeaders)
     // clear all pages
     if (requestHeaders.indexOf("GET /clear/pages ") != -1)
     {
-        File root = FFat.open(pagesPath, "r");
+        File root = LittleFS.open(pagesPath, "r");
         if (root && root.isDirectory())
         {
             File file = root.openNextFile();
@@ -285,7 +289,7 @@ void handleClient(WiFiClient client, String requestHeaders)
             {
                 String name = String(file.name());
                 String path = pagesPath + name;
-                FFat.remove(path);
+                LittleFS.remove(path);
                 file = root.openNextFile();
             }
         }
@@ -296,7 +300,7 @@ void handleClient(WiFiClient client, String requestHeaders)
     if (requestHeaders.indexOf("GET /records ") != -1)
     {
         String content = "[";
-        File root = FFat.open(recordsPath, "r");
+        File root = LittleFS.open(recordsPath, "r");
         if (root && root.isDirectory())
         {
             File file = root.openNextFile();
@@ -324,7 +328,7 @@ void handleClient(WiFiClient client, String requestHeaders)
     {
         String name = extractFromString(requestHeaders, "?name=", " HTTP");
         String path = recordsPath + name;
-        if (FFat.exists(path))
+        if (LittleFS.exists(path))
         {
             okResponse(client, path, "text/plain");
             return;
@@ -335,9 +339,9 @@ void handleClient(WiFiClient client, String requestHeaders)
     {
         String name = extractFromString(requestHeaders, "?name=", " HTTP");
         String path = recordsPath + name;
-        if (FFat.exists(path))
+        if (LittleFS.exists(path))
         {
-            FFat.remove(path);
+            LittleFS.remove(path);
             okResponse(client);
             return;
         }
@@ -358,7 +362,7 @@ void handleClient(WiFiClient client, String requestHeaders)
             return;
         }
         String path = recordsPath + name;
-        if (FFat.exists(path))
+        if (LittleFS.exists(path))
         {
             forbidden(client);
             return;
@@ -374,6 +378,11 @@ void handleClient(WiFiClient client, String requestHeaders)
     // stop recording
     if (requestHeaders.indexOf("GET /stop") != -1)
     {
+        if (!slot.recording)
+        {
+            badRequest(client);
+            return;
+        }
         slot.filePath = "";
         slot.time = 0;
         slot.delay = 0;
@@ -381,33 +390,35 @@ void handleClient(WiFiClient client, String requestHeaders)
         okResponse(client);
         return;
     }
+
     if (requestHeaders.indexOf("GET /readings") != -1)
     {
-        String content = "{\"totalBytes\" : " + String(FFat.totalBytes());
-        content += ", \"usedBytes\" : " + String(FFat.usedBytes());
+        LittleFS.info(fsInfo);
+        String content = "{\"totalBytes\" : " + String(fsInfo.totalBytes);
+        content += ", \"usedBytes\" : " + String(fsInfo.usedBytes);
         content += ", \"recording\" : " + String((slot.recording) ? "true" : "false");
         content += ", \"millivolts\" : " + String(getPotentialInMilliVolts());
         content += "}";
         okResponse(client, content);
         return;
     }
+
     notFoundResponse(client);
 }
 
 void setup()
 {
-    hasClientConnectedToWiFi();
     Serial.begin(115200);
     pinMode(readingIndicatorPin, OUTPUT);
     pinMode(connectionIndicatorPin, OUTPUT);
-    if (!FFat.begin())
+    if (!LittleFS.begin())
     {
-        Serial.println("FFat Mount Failed");
+        Serial.println("LittleFS Mount Failed");
         while (true)
             ;
     }
-    WiFi.setSleep(false);
-    if (!WiFi.softAP("Voltimeter", "0123456789", 1, 0, 1))
+    WiFi.setSleepMode(WIFI_NONE_SLEEP);
+    if (!WiFi.softAP("Voltimeter(esp8266)", "0123456789", 1, 0, 1))
     {
         Serial.println("Webserver failed starting...");
         return;
@@ -420,6 +431,7 @@ void setup()
 
 void loop()
 {
+    hasClientConnectedToWiFi();
     WiFiClient client = server.available();
     if (client)
     {
