@@ -50,7 +50,7 @@ int getPotentialInMilliVolts()
         sum += analogRead(analogPin);
         delay(1);
     }
-    int vadc = (int)(sum / n) * 3300 / 1024;
+    int vadc = (int)(sum / n) * 3300 / 4096;
     int vm = (int)(vadc - 1110) / 0.935;
     return vm;
 }
