@@ -1,16 +1,26 @@
 #include <ESP8266WiFi.h>
 #include <FS.h>
 #include <LittleFS.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
 const int readingIndicatorPin = 12;    // D6
 const int connectionIndicatorPin = 13; // D7
 const int analogPin = 0;               // A0
+const int sdaPin = 4;                  // D2
+const int sclPin = 5;                  // D1
+
+// for 128x64 displays:
+Adafruit_SSD1306 display(124, 64, &Wire, -1);
 
 // Store the FS storage info
 FSInfo fsInfo;
 
 const String recordsPath = "/records/";
 const String pagesPath = "/pages/";
+String ip;
+
 struct RecordingSlot
 {
     String filePath = "";
@@ -21,17 +31,67 @@ struct RecordingSlot
 
 RecordingSlot slot;
 
+const long updateDisplayDelay = 2000;
+long displayTimer = 0;
+bool connected = false;
+
 // Set web server port number to 80
 WiFiServer server(80);
+
+void checkForPrintDisplay()
+{
+    long time = millis() - displayTimer;
+    if (time >= updateDisplayDelay)
+    {
+        displayTimer = millis();
+        printInDisplay();
+    }
+}
+
+void printInDisplay()
+{
+    display.clearDisplay();
+    display.setTextColor(WHITE);
+    display.setTextSize(1);
+    // printing ip
+    display.setCursor(0, 2);
+    display.print(ip);
+    if (!slot.recording)
+    {
+        // printing if recording
+        display.setCursor(75, 2);
+        display.print("R");
+    }
+    if (!connected)
+    {
+        // printing if connected
+        display.setCursor(85, 2);
+        display.print("C");
+    }
+    // print storage percentage
+    // display.setCursor(100, 2);
+    // int s = (int) fsInfo.usedBytes/fsInfo.totalBytes;
+    // String sStr = String(s);
+    // sStr += "%";
+    // display.print("10%");
+    display.setTextSize(2);
+    // printing ip
+    display.setCursor(0, 12);
+    int v = getPotentialInMilliVolts();
+    display.print(String(v) + " mV");
+    display.display();
+}
 
 void hasClientConnectedToWiFi()
 {
     if (WiFi.softAPgetStationNum() > 0)
     {
         digitalWrite(connectionIndicatorPin, HIGH);
+        connected = true;
         return;
     }
     digitalWrite(connectionIndicatorPin, LOW);
+    connected = false;
 }
 
 int getPotentialInMilliVolts()
@@ -413,6 +473,16 @@ void setup()
     Serial.begin(115200);
     pinMode(readingIndicatorPin, OUTPUT);
     pinMode(connectionIndicatorPin, OUTPUT);
+    if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
+    {
+        Serial.println("Display initialization failed");
+        while (true)
+            ;
+    }
+    // init display timer
+    displayTimer = millis();
+    display.clearDisplay();
+    display.display();
     if (!LittleFS.begin())
     {
         Serial.println("LittleFS Mount Failed");
@@ -425,8 +495,9 @@ void setup()
         Serial.println("Webserver failed starting...");
         return;
     }
+    ip = WiFi.softAPIP().toString();
     Serial.print("Soft-AP IP address = ");
-    Serial.println(WiFi.softAPIP()); // standard ip = 192.168.4.1
+    Serial.println(ip); // standard ip = 192.168.4.1
     Serial.println("Webserver started...");
     server.begin();
 }
@@ -472,6 +543,7 @@ void loop()
         client.stop();
         Serial.println("client disconnected...");
     }
+    checkForPrintDisplay();
     checkForRecording();
     delay(100);
 }
