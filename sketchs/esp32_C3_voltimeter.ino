@@ -36,6 +36,14 @@ const long updateDisplayDelay = 2000;
 long displayTimer = 0;
 bool connected = false;
 
+// percent of free storage
+unsigned long storage = 0;
+
+void updateStorageInfo()
+{
+    storage = (unsigned long)100 * FFat.usedBytes() / FFat.totalBytes();
+}
+
 void checkForPrintDisplay()
 {
     long time = millis() - displayTimer;
@@ -67,13 +75,10 @@ void printInDisplay()
         display.print("C");
     }
     // print storage percentage
-    // display.setCursor(100, 2);
-    // int s = (int) fsInfo.usedBytes/fsInfo.totalBytes;
-    // String sStr = String(s);
-    // sStr += "%";
-    // display.print("10%");
-    display.setTextSize(2);
+    display.setCursor(100, 2);
+    display.print(String(storage) + "%");
     // printing ip
+    display.setTextSize(2);
     display.setCursor(0, 12);
     int v = getPotentialInMilliVolts();
     display.print(String(v) + " mV");
@@ -455,8 +460,7 @@ void handleClient(WiFiClient client, String requestHeaders)
     }
     if (requestHeaders.indexOf("GET /readings") != -1)
     {
-        String content = "{\"totalBytes\" : " + String(FFat.totalBytes());
-        content += ", \"usedBytes\" : " + String(FFat.usedBytes());
+        String content = "{\"storage\" : " + String(storage);
         content += ", \"recording\" : " + String((slot.recording) ? "true" : "false");
         content += ", \"millivolts\" : " + String(getPotentialInMilliVolts());
         content += "}";
@@ -542,6 +546,7 @@ void loop()
         client.stop();
         Serial.println("client disconnected...");
     }
+    updateStorageInfo();
     checkForPrintDisplay();
     checkForRecording();
     delay(100);

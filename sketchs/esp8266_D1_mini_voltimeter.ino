@@ -29,6 +29,8 @@ struct RecordingSlot
     bool recording = false;
 };
 
+// percent of free storage
+unsigned long storage = 0;
 RecordingSlot slot;
 
 const long updateDisplayDelay = 2000;
@@ -37,6 +39,12 @@ bool connected = false;
 
 // Set web server port number to 80
 WiFiServer server(80);
+
+void updateStorageInfo()
+{
+    LittleFS.info(fsInfo);
+    storage = (unsigned long)100 * fsInfo.usedBytes / fsInfo.totalBytes;
+}
 
 void checkForPrintDisplay()
 {
@@ -56,26 +64,23 @@ void printInDisplay()
     // printing ip
     display.setCursor(0, 2);
     display.print(ip);
-    if (!slot.recording)
+    if (slot.recording)
     {
         // printing if recording
         display.setCursor(75, 2);
         display.print("R");
     }
-    if (!connected)
+    if (connected)
     {
         // printing if connected
         display.setCursor(85, 2);
         display.print("C");
     }
     // print storage percentage
-    // display.setCursor(100, 2);
-    // int s = (int) fsInfo.usedBytes/fsInfo.totalBytes;
-    // String sStr = String(s);
-    // sStr += "%";
-    // display.print("10%");
+    display.setCursor(100, 2);
+    display.print(String(storage) + "%");
+    // printing potential
     display.setTextSize(2);
-    // printing ip
     display.setCursor(0, 12);
     int v = getPotentialInMilliVolts();
     display.print(String(v) + " mV");
@@ -456,8 +461,7 @@ void handleClient(WiFiClient client, String requestHeaders)
     if (requestHeaders.indexOf("GET /readings") != -1)
     {
         LittleFS.info(fsInfo);
-        String content = "{\"totalBytes\" : " + String(fsInfo.totalBytes);
-        content += ", \"usedBytes\" : " + String(fsInfo.usedBytes);
+        String content = "{\"storage\" : " + String(storage);
         content += ", \"recording\" : " + String((slot.recording) ? "true" : "false");
         content += ", \"millivolts\" : " + String(getPotentialInMilliVolts());
         content += "}";
@@ -543,6 +547,7 @@ void loop()
         client.stop();
         Serial.println("client disconnected...");
     }
+    updateStorageInfo();
     checkForPrintDisplay();
     checkForRecording();
     delay(100);

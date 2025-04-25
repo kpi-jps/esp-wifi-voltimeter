@@ -131,7 +131,7 @@
                         recording.innerText === "" ? recordingText :
                             recording.innerText.length < recordingText.length + 3 ? recording.innerText + "." :
                                 recordingText
-                    storage.innerText = ((json.usedBytes / json.totalBytes) * 100).toFixed(0)
+                    storage.innerText = json.storage
                     return
                 }
                 if (response.status === 500) clearInterval(interval)
