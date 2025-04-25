@@ -336,6 +336,11 @@ void handleClient(WiFiClient client, String requestHeaders)
     {
         String name = extractFromString(requestHeaders, "?name=", " HTTP");
         String path = recordsPath + name;
+        if (path.equals(slot.filePath))
+        {
+            forbidden(client);
+            return;
+        }
         if (LittleFS.exists(path))
         {
             LittleFS.remove(path);
