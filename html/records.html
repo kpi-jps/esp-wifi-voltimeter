@@ -109,6 +109,10 @@
                         window.location.reload();
                         return
                     }
+                    if (response.status === 403) {
+                        alert("Record file in use!")
+                        return
+                    }
                     alert("Resources not found!")
                 }
             } catch (error) {
