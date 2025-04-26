@@ -17,10 +17,6 @@ Adafruit_SSD1306 display(124, 64, &Wire, -1);
 // Set web server port number to 80
 WiFiServer server(80);
 
-String ip;
-const String recordsPath = "/records/";
-const String pagesPath = "/pages/";
-
 // Stores the files info during the saving process
 struct RecordingSlot
 {
@@ -30,7 +26,19 @@ struct RecordingSlot
     bool recording = false;
 };
 
+struct Calibration
+{
+    float lc = 0; // linear coefficient
+    float ac = 1; // angular coefficient
+};
+
 RecordingSlot slot;
+Calibration cal;
+
+String ip;
+const String calPath = "/cal/";
+const String recordsPath = "/records/";
+const String pagesPath = "/pages/";
 
 const long updateDisplayDelay = 2000;
 long displayTimer = 0;
@@ -38,6 +46,29 @@ bool connected = false;
 
 // percent of free storage
 unsigned long storage = 0;
+
+void setCalibration()
+{
+    String path;
+    path = calPath + "lc.txt";
+    if (FFat.exists(path))
+    {
+        File file = FFat.open(path);
+        float lc = file.readString().toFloat();
+        file.close();
+        if (lc > 0)
+            cal.lc = lc;
+    }
+    path = calPath + "ac.txt";
+    if (FFat.exists(path))
+    {
+        File file = FFat.open(path);
+        float ac = file.readString().toFloat();
+        file.close();
+        if (ac > 0)
+            cal.ac = ac;
+    }
+}
 
 void updateStorageInfo()
 {
@@ -99,12 +130,6 @@ void hasClientConnectedToWiFi()
 
 int getPotentialInMilliVolts()
 {
-    /*
-        calibration obtained for the circuit:
-        Vadc / mv = 1100 + 0.935 Vm (R^2 = 1)
-        Vadc = potential obtained by adc board ESP32C3 (average value)
-        Vm = potential measured by the voltimeter
-      */
     int sum = 0;
     int n = 50;
     // gets the average value for 50 replica
@@ -114,7 +139,8 @@ int getPotentialInMilliVolts()
         delay(1);
     }
     int vadc = (int)(sum / n) * 3300 / 4096;
-    int vm = (int)(vadc - 1110) / 0.935;
+    // uses calibration stored in lc and ac txt files
+    int vm = (int)(vadc - cal.lc) / cal.ac;
     return vm;
 }
 
@@ -442,7 +468,6 @@ void handleClient(WiFiClient client, String requestHeaders)
         okResponse(client);
         return;
     }
-
     // stop recording
     if (requestHeaders.indexOf("GET /stop") != -1)
     {
@@ -458,6 +483,7 @@ void handleClient(WiFiClient client, String requestHeaders)
         okResponse(client);
         return;
     }
+    // get readings
     if (requestHeaders.indexOf("GET /readings") != -1)
     {
         String content = "{\"storage\" : " + String(storage);
@@ -465,6 +491,60 @@ void handleClient(WiFiClient client, String requestHeaders)
         content += ", \"millivolts\" : " + String(getPotentialInMilliVolts());
         content += "}";
         okResponse(client, content);
+        return;
+    }
+    // get calibration coefficients
+    if (requestHeaders.indexOf("GET /cal/get") != -1)
+    {
+        String content = "{\"lc\" : " + String(cal.lc);
+        content += ", \"ac\" : " + String(cal.ac);
+        content += "}";
+        okResponse(client, content);
+        return;
+    }
+    // reset calibration
+    if (requestHeaders.indexOf("GET /cal/reset") != -1)
+    {
+        String path;
+        path = calPath + "ac.txt";
+        if (FFat.exists(path))
+            FFat.remove(path);
+        path = calPath + "lc.txt";
+        if (FFat.exists(path))
+            FFat.remove(path);
+        setCalibration();
+        okResponse(client);
+        return;
+    }
+    // set calibration coefficients
+    if (requestHeaders.indexOf("GET /cal/set?ac=") != -1 && requestHeaders.indexOf("&lc=") != -1)
+    {
+        float ac = extractFromString(requestHeaders, "?ac=", "&").toFloat();
+        float lc = extractFromString(requestHeaders, "&lc=", " HTTP").toFloat();
+        // lc can be zero, but ac can`t
+        if (ac == 0)
+        {
+            badRequest(client);
+            return;
+        }
+        String path;
+        File file;
+        path = calPath + "lc.txt";
+        if (FFat.exists(path))
+            file = FFat.open(path, "w");
+        else
+            file = FFat.open(path, "w", true);
+        file.println(lc);
+        file.close();
+        path = calPath + "ac.txt";
+        if (FFat.exists(path))
+            file = FFat.open(path, "w");
+        else
+            file = FFat.open(path, "w", true);
+        file.println(ac);
+        file.close();
+        setCalibration();
+        okResponse(client);
         return;
     }
     notFoundResponse(client);
@@ -503,6 +583,7 @@ void setup()
     Serial.println(ip); // standard ip = 192.168.4.1
     Serial.println("Webserver started...");
     server.begin();
+    setCalibration();
 }
 
 void loop()

@@ -17,6 +17,7 @@ Adafruit_SSD1306 display(124, 64, &Wire, -1);
 // Store the FS storage info
 FSInfo fsInfo;
 
+const String calPath = "/cal/";
 const String recordsPath = "/records/";
 const String pagesPath = "/pages/";
 String ip;
@@ -29,9 +30,16 @@ struct RecordingSlot
     bool recording = false;
 };
 
+struct Calibration
+{
+    float lc = 0; // linear coefficient
+    float ac = 1; // angular coefficient
+};
+
 // percent of free storage
 unsigned long storage = 0;
 RecordingSlot slot;
+Calibration cal;
 
 const long updateDisplayDelay = 2000;
 long displayTimer = 0;
@@ -39,6 +47,27 @@ bool connected = false;
 
 // Set web server port number to 80
 WiFiServer server(80);
+
+void setCalibration()
+{
+    String path;
+    path = calPath + "lc.txt";
+    if (LittleFS.exists(path))
+    {
+        File file = LittleFS.open(path, "r");
+        float lc = file.readString().toFloat();
+        file.close();
+        cal.lc = lc;
+    }
+    path = calPath + "ac.txt";
+    if (LittleFS.exists(path))
+    {
+        File file = LittleFS.open(path, "r");
+        float ac = file.readString().toFloat();
+        file.close();
+        cal.ac = (ac != 0) ? ac : 0;
+    }
+}
 
 void updateStorageInfo()
 {
@@ -101,12 +130,6 @@ void hasClientConnectedToWiFi()
 
 int getPotentialInMilliVolts()
 {
-    /*
-        calibration obtained for the circuit:
-        Vadc / mv = 1100 + 0.935 Vm (R^2 = 1)
-        Vadc = potential obtained by adc board ESP32C3 (average value)
-        Vm = potential measured by the voltimeter
-      */
     int sum = 0;
     int n = 50;
     // gets the average value for 50 replica
@@ -115,8 +138,9 @@ int getPotentialInMilliVolts()
         sum += analogRead(analogPin);
         delay(1);
     }
-    int vadc = (int)(sum / n) * 3300 / 1024;
-    int vm = (int)(vadc - 1110) / 0.935;
+    int vadc = (int)(sum / n) * 3300 / 4096;
+    // uses calibration stored in lc and ac txt files
+    int vm = (int)(vadc - cal.lc) / cal.ac;
     return vm;
 }
 
@@ -441,7 +465,6 @@ void handleClient(WiFiClient client, String requestHeaders)
         okResponse(client);
         return;
     }
-
     // stop recording
     if (requestHeaders.indexOf("GET /stop") != -1)
     {
@@ -457,7 +480,7 @@ void handleClient(WiFiClient client, String requestHeaders)
         okResponse(client);
         return;
     }
-
+    // get readings
     if (requestHeaders.indexOf("GET /readings") != -1)
     {
         LittleFS.info(fsInfo);
@@ -466,6 +489,60 @@ void handleClient(WiFiClient client, String requestHeaders)
         content += ", \"millivolts\" : " + String(getPotentialInMilliVolts());
         content += "}";
         okResponse(client, content);
+        return;
+    }
+    // get calibration coefficients
+    if (requestHeaders.indexOf("GET /cal/get") != -1)
+    {
+        String content = "{\"lc\" : " + String(cal.lc);
+        content += ", \"ac\" : " + String(cal.ac);
+        content += "}";
+        okResponse(client, content);
+        return;
+    }
+    // reset calibration
+    if (requestHeaders.indexOf("GET /cal/reset") != -1)
+    {
+        String path;
+        path = calPath + "ac.txt";
+        if (LittleFS.exists(path))
+        {
+            LittleFS.remove(path);
+            cal.ac = 1;
+        }
+        path = calPath + "lc.txt";
+        if (LittleFS.exists(path))
+        {
+            LittleFS.remove(path);
+            cal.lc = 0;
+        }
+        setCalibration();
+        okResponse(client);
+        return;
+    }
+    // set calibration coefficients
+    if (requestHeaders.indexOf("GET /cal/set?ac=") != -1 && requestHeaders.indexOf("&lc=") != -1)
+    {
+        float ac = extractFromString(requestHeaders, "?ac=", "&").toFloat();
+        float lc = extractFromString(requestHeaders, "&lc=", " HTTP").toFloat();
+        // lc can be zero, but ac can`t
+        if (ac == 0)
+        {
+            badRequest(client);
+            return;
+        }
+        String path;
+        File file;
+        path = calPath + "lc.txt";
+        file = LittleFS.open(path, "w");
+        file.println(lc);
+        file.close();
+        path = calPath + "ac.txt";
+        file = LittleFS.open(path, "w");
+        file.println(ac);
+        file.close();
+        setCalibration();
+        okResponse(client);
         return;
     }
 
@@ -504,6 +581,7 @@ void setup()
     Serial.println(ip); // standard ip = 192.168.4.1
     Serial.println("Webserver started...");
     server.begin();
+    setCalibration();
 }
 
 void loop()
