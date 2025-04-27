@@ -54,6 +54,9 @@
             background-color: rgb(249, 248, 248);
             color: black;
         }
+        .hidden {
+            display: none;
+        }
 
         @media (max-width: 600px) {
             body {
@@ -67,14 +70,14 @@
     <h1>Voltimeter</h1>
     <div class="row">
         <h3>Saved records</h3>
-        <select id="records">
-            <option value="Teste"></option>
+        <select id="records" disabled>
+            <option value="">No records</option>
         </select>
     </div>
     <div class="row">
         <a id="back" href=""> Back </a>
-        <a id="download" href="" download> Download </a>
-        <button id="del"> Delete </button>
+        <a id="download" class="hidden" href="" download> Download </a>
+        <button id="del" class="hidden"> Delete </button>
     </div>
 </body>
 
@@ -123,15 +126,20 @@
             const response = await fetch(`${mainUrl}records`)
             if (response.ok) {
                 files = await response.json()
-                records.innerHTML = ""
-                for (const file of files) {
-                    const option = document.createElement("option")
-                    option.value = file
-                    option.innerText = file
-                    records.append(option)
+                if (files.length > 0) {
+                    download.classList.remove("hidden")
+                    del.classList.remove("hidden")
+                    records.removeAttribute("disabled")
+                    records.innerHTML = ""
+                    for (const file of files) {
+                        const option = document.createElement("option")
+                        option.value = file
+                        option.innerText = file
+                        records.append(option)
+                    }
+                    download.href = `${mainUrl}records/get?name=${records.value}`
                 }
-                download.href = `${mainUrl}records/get?name=${records.value}`
-                return
+                return  
             }
             alert("Resources not found!")
         } catch (error) {
