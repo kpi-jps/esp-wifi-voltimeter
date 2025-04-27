@@ -55,10 +55,6 @@
             background-color: rgb(249, 248, 248);
             color: black;
         }
-
-        #upload-info {
-            color: lightseagreen;
-        }
     </style>
 </head>
 
@@ -67,18 +63,114 @@
     <form>
         <div class="row input">
             Angular coefficient (ac):
-            <input type="text" id="ac">
+            <input type="text" id="ac" value="1">
         </div>
         <div class="row input">
             Linear coefficient (lc):
-            <input type="text" id="lc">
+            <input type="text" id="lc" value="0">
         </div>
         <div class="row">
-            <button id="send" class="input"> Send </button>
+            <button id="cal" class="input"> Calibrate </button>
+            <button id="reset" class="input"> Reset </button>
         </div>
-        <div class="row" id="upload-info"></div>
     </form>
-   
+
 </body>
+
+<script>
+    window.addEventListener("load", async (e) => {
+        const mainUrl = "http://192.168.4.1/"
+        const ac = document.getElementById("ac")
+        const lc = document.getElementById("lc")
+        function decimalNumberInputMask(input) {
+            if (input && input.tagName === "INPUT" && input.type === "text") {
+                const decimalSeparator = "."
+                const allowedChars = "0123456789" + decimalSeparator
+                let count = 0
+                let index = 0
+                for (const char of input.value) {
+                    if (char === decimalSeparator) {
+                        count++
+                    }
+                    if (count > 1) {
+                        input.value = input.value.slice(0, index) + input.value.slice(index + 1, input.value.length)
+                        return
+                    }
+                    if (!allowedChars.includes(char)) {
+                        input.value = input.value.slice(0, index) + input.value.slice(index + 1, input.value.length)
+                        return
+                    }
+                    index++
+                }
+                return
+            }
+            throw new Error("The html element got by id is null, undefined or isn't an input type text")
+        }
+
+        function inputFitContent(input) {
+            if (input && input.tagName === "INPUT" && input.type === "text") {
+                if (input.value.length === 0) {
+                    input.style.width = "3ch"
+                    return
+                }
+                input.style.width = input.value.length + "ch"
+                return
+            }
+            throw new Error("The html element got by id is null, undefined or isn't an input type text")
+        }
+
+        ac.addEventListener("input", () => decimalNumberInputMask(ac))
+        lc.addEventListener("input", () => decimalNumberInputMask(lc))
+        ac.addEventListener("input", () => inputFitContent(ac))
+        lc.addEventListener("input", () => inputFitContent(lc))
+
+        document.getElementById("reset").addEventListener("click", async (e) => {
+            e.preventDefault()
+            try {
+                const url = mainUrl + "cal/reset"
+                const response = await fetch(url)
+                if(response.ok) {
+                    alert("Calibration reseted!");
+                    window.location.reload()
+                    return
+                }
+                alert("Something went wrong!")
+
+            } catch (error) {
+                console.log(error)
+            }
+        })
+
+        document.getElementById("cal").addEventListener("click", async (e) => {
+            e.preventDefault()
+            try {
+                if(!ac.value || !lc.value) {
+                    console.log(ac)
+                    console.log(lc)
+                    alert("ac and/or lc cannot be empty!")
+                }
+                const url = `${mainUrl}cal/set?ac=${ac.value}&lc=${lc.value}`
+                const response = await fetch(url)
+                if(response.ok) {
+                    alert("Calibraion done!")
+                    window.location.reload()
+                }
+
+            } catch (error) {
+                console.log(error)
+            }
+        })
+
+        const response = await fetch(mainUrl + "cal/get")
+        if(response.ok) {
+            const json = await response.json()
+            console.log(json)
+            ac.value = json.ac
+            lc.value = json.lc
+            return
+        }
+    })
+
+</script>
 
 </html>
