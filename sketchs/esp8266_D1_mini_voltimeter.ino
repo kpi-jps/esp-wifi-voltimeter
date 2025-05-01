@@ -5,8 +5,6 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
-const int readingIndicatorPin = 12;    // D6
-const int connectionIndicatorPin = 13; // D7
 const int analogPin = 0;               // A0
 const int sdaPin = 4;                  // D2
 const int sclPin = 5;                  // D1
@@ -552,8 +550,6 @@ void handleClient(WiFiClient client, String requestHeaders)
 void setup()
 {
     Serial.begin(115200);
-    pinMode(readingIndicatorPin, OUTPUT);
-    pinMode(connectionIndicatorPin, OUTPUT);
     if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
     {
         Serial.println("Display initialization failed");
