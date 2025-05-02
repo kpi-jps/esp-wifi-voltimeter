@@ -136,7 +136,7 @@ int getPotentialInMilliVolts()
         sum += analogRead(analogPin);
         delay(1);
     }
-    int vadc = (int)(sum / n) * 3300 / 4096;
+    int vadc = (int)(sum / n) * 3300 / 1024;
     // uses calibration stored in lc and ac txt files
     int vm = (int)(vadc - cal.lc) / cal.ac;
     return vm;
