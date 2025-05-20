@@ -5,9 +5,10 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
-const int analogPin = 0;               // A0
-const int sdaPin = 4;                  // D2
-const int sclPin = 5;                  // D1
+
+const int analogPin = 0;                //A0
+const int sdaPin = 4;                   // D2
+const int sclPin = 5;                   //D1
 
 // for 128x64 displays:
 Adafruit_SSD1306 display(124, 64, &Wire, -1);
@@ -15,26 +16,25 @@ Adafruit_SSD1306 display(124, 64, &Wire, -1);
 // Store the FS storage info
 FSInfo fsInfo;
 
+const String SSID = "Voltimeter_001";
 const String calPath = "/cal/";
 const String recordsPath = "/records/";
 const String pagesPath = "/pages/";
 String ip;
 
-struct RecordingSlot
-{
-    String filePath = "";
-    unsigned long time = 0;
-    unsigned long delay = 0;
-    bool recording = false;
+struct RecordingSlot {
+  String filePath = "";
+  unsigned long time = 0;
+  unsigned long delay = 0;
+  bool recording = false;
 };
 
-struct Calibration
-{
-    float lc = 0; // linear coefficient
-    float ac = 1; // angular coefficient
+struct Calibration {
+  float lc = 0;  //linear coefficient
+  float ac = 1;  //angular coefficient
 };
 
-// percent of free storage
+//percent of free storage
 unsigned long storage = 0;
 RecordingSlot slot;
 Calibration cal;
@@ -46,583 +46,508 @@ bool connected = false;
 // Set web server port number to 80
 WiFiServer server(80);
 
-void setCalibration()
-{
-    String path;
-    path = calPath + "lc.txt";
-    if (LittleFS.exists(path))
-    {
-        File file = LittleFS.open(path, "r");
-        float lc = file.readString().toFloat();
-        file.close();
-        cal.lc = lc;
-    }
-    path = calPath + "ac.txt";
-    if (LittleFS.exists(path))
-    {
-        File file = LittleFS.open(path, "r");
-        float ac = file.readString().toFloat();
-        file.close();
-        cal.ac = (ac != 0) ? ac : 0;
-    }
-}
-
-void updateStorageInfo()
-{
-    LittleFS.info(fsInfo);
-    storage = (unsigned long)100 * fsInfo.usedBytes / fsInfo.totalBytes;
-}
-
-void checkForPrintDisplay()
-{
-    long time = millis() - displayTimer;
-    if (time >= updateDisplayDelay)
-    {
-        displayTimer = millis();
-        printInDisplay();
-    }
-}
-
-void printInDisplay()
-{
-    display.clearDisplay();
-    display.setTextColor(WHITE);
-    display.setTextSize(1);
-    // printing ip
-    display.setCursor(0, 2);
-    display.print(ip);
-    if (slot.recording)
-    {
-        // printing if recording
-        display.setCursor(75, 2);
-        display.print("R");
-    }
-    if (connected)
-    {
-        // printing if connected
-        display.setCursor(85, 2);
-        display.print("C");
-    }
-    // print storage percentage
-    display.setCursor(100, 2);
-    display.print(String(storage) + "%");
-    // printing potential
-    display.setTextSize(2);
-    display.setCursor(0, 12);
-    int v = getPotentialInMilliVolts();
-    display.print(String(v) + " mV");
-    display.display();
-}
-
-void hasClientConnectedToWiFi()
-{
-    if (WiFi.softAPgetStationNum() > 0)
-    {
-        digitalWrite(connectionIndicatorPin, HIGH);
-        connected = true;
-        return;
-    }
-    digitalWrite(connectionIndicatorPin, LOW);
-    connected = false;
-}
-
-int getPotentialInMilliVolts()
-{
-    int sum = 0;
-    int n = 50;
-    // gets the average value for 50 replica
-    for (int i = 0; i < n; i++)
-    {
-        sum += analogRead(analogPin);
-        delay(1);
-    }
-    int vadc = (int)(sum / n) * 3300 / 1024;
-    // uses calibration stored in lc and ac txt files
-    int vm = (int)(vadc - cal.lc) / cal.ac;
-    return vm;
-}
-
-void recording()
-{
-    String path = slot.filePath;
-    int v = getPotentialInMilliVolts();
-    String content = String(slot.time) + ";" + String(v) + "\n";
-    File file = LittleFS.open(path, "a");
-    file.println(content);
+void setCalibration() {
+  String path;
+  path = calPath + "lc.txt";
+  if (LittleFS.exists(path)) {
+    File file = LittleFS.open(path, "r");
+    float lc = file.readString().toFloat();
     file.close();
+    cal.lc = lc;
+  }
+  path = calPath + "ac.txt";
+  if (LittleFS.exists(path)) {
+    File file = LittleFS.open(path, "r");
+    float ac = file.readString().toFloat();
+    file.close();
+    cal.ac = (ac != 0) ? ac : 0;
+  }
 }
 
-void checkForRecording()
-{
-    long time = millis() - slot.time;
-    if (slot.recording && time >= slot.delay)
-    {
-        slot.time += time;
-        recording();
-    }
+void updateStorageInfo() {
+  LittleFS.info(fsInfo);
+  storage = (unsigned long)100 * fsInfo.usedBytes / fsInfo.totalBytes;
 }
 
-String extractFromString(String str, String startChars, String endChars)
-{
-    int i = str.indexOf(startChars);
-    int j = str.indexOf(endChars);
-    String result = str.substring(i + startChars.length(), j);
-    return result;
+int getPotentialInMilliVolts() {
+  int sum = 0;
+  int n = 50;
+  // gets the average value for 50 replica
+  for (int i = 0; i < n; i++) {
+    sum += analogRead(analogPin);
+    delay(1);
+  }
+  int vadc = (int)(sum / n) * 3300 / 1024;
+  //uses calibration stored in lc and ac txt files
+  int vm = (int)(vadc - cal.lc) / cal.ac;
+  return vm;
+}
+
+void checkForPrintDisplay() {
+  long time = millis() - displayTimer;
+  if (time >= updateDisplayDelay) {
+    displayTimer = millis();
+    printInDisplay();
+  }
+}
+
+void printInDisplay() {
+  display.clearDisplay();
+  display.setTextColor(WHITE);
+  display.setTextSize(1);
+  //printing SSID
+  display.setCursor(0, 1);
+  display.print(SSID);
+  //printing ip
+  display.setCursor(0, 9);
+  display.print(ip);
+  if (slot.recording) {
+    //printing if recording
+    display.setCursor(75, 9);
+    display.print("R");
+  }
+  if (connected) {
+    //printing if connected
+    display.setCursor(85, 9);
+    display.print("C");
+  }
+  //print storage percentage
+  display.setCursor(100, 9);
+  display.print(String(storage) + "%");
+  //printing potential
+  display.setTextSize(2);
+  display.setCursor(0, 18);
+  int v = getPotentialInMilliVolts();
+  display.print(String(v) + " mV");
+  display.display();
+}
+
+void hasClientConnectedToWiFi() {
+  if (WiFi.softAPgetStationNum() > 0) {
+    connected = true;
+    return;
+  }
+  connected = false;
+}
+
+void recording() {
+  String path = slot.filePath;
+  int v = getPotentialInMilliVolts();
+  String content = String(slot.time) + ";" + String(v) + "\n";
+  File file = LittleFS.open(path, "a");
+  file.println(content);
+  file.close();
+}
+
+void checkForRecording() {
+  long time = millis() - slot.time;
+  if (slot.recording && time >= slot.delay) {
+    slot.time += time;
+    recording();
+  }
+}
+
+String extractFromString(String str, String startChars, String endChars) {
+  int i = str.indexOf(startChars);
+  int j = str.indexOf(endChars);
+  String result = str.substring(i + startChars.length(), j);
+  return result;
 }
 
 // for basic responses
-void okResponse(WiFiClient client)
-{
-    String content = "{\"response\" : \"OK\" }";
-    String responseHeaders = "HTTP/1.1 200 OK\n";
-    responseHeaders += "Access-Control-Allow-Origin: *\n";
-    responseHeaders += "Connection: Keep-Alive\n";
-    responseHeaders += "Keep-Alive: timeout=10, max=200\n";
-    responseHeaders += "Content-type: application/json \n";
-    responseHeaders += "Content-Length:" + String(content.length()) + "\n";
-    responseHeaders += "\n";
-    Serial.println(responseHeaders + "\n");
-    client.print(responseHeaders);
-    client.print(content);
+void okResponse(WiFiClient client) {
+  String content = "{\"response\" : \"OK\" }";
+  String responseHeaders = "HTTP/1.1 200 OK\n";
+  responseHeaders += "Access-Control-Allow-Origin: *\n";
+  responseHeaders += "Connection: Keep-Alive\n";
+  responseHeaders += "Keep-Alive: timeout=10, max=200\n";
+  responseHeaders += "Content-type: application/json \n";
+  responseHeaders += "Content-Length:" + String(content.length()) + "\n";
+  responseHeaders += "\n";
+  Serial.println(responseHeaders + "\n");
+  client.print(responseHeaders);
+  client.print(content);
 }
 
 // for files
-void okResponse(WiFiClient client, String filePath, String contentType)
-{
-    File file = LittleFS.open(filePath, "r");
-    String responseHeaders = "HTTP/1.1 200 OK\n";
-    responseHeaders += "Access-Control-Allow-Origin: *\n";
-    responseHeaders += "Connection: Keep-Alive\n";
-    responseHeaders += "Keep-Alive: timeout=10, max=200\n";
-    responseHeaders += "Content-type: " + contentType + " \n";
-    responseHeaders += "Content-Length:" + String(file.size()) + "\n";
-    responseHeaders += "\n";
-    Serial.println(responseHeaders);
-    client.print(responseHeaders);
-    long count = 0;
-    while (count < file.size())
-    {
-        char c = file.read();
-        client.print(c);
-        count++;
-    }
-    file.close();
+void okResponse(WiFiClient client, String filePath, String contentType) {
+  File file = LittleFS.open(filePath, "r");
+  String responseHeaders = "HTTP/1.1 200 OK\n";
+  responseHeaders += "Access-Control-Allow-Origin: *\n";
+  responseHeaders += "Connection: Keep-Alive\n";
+  responseHeaders += "Keep-Alive: timeout=10, max=200\n";
+  responseHeaders += "Content-type: " + contentType + " \n";
+  responseHeaders += "Content-Length:" + String(file.size()) + "\n";
+  responseHeaders += "\n";
+  Serial.println(responseHeaders);
+  client.print(responseHeaders);
+  long count = 0;
+  while (count < file.size()) {
+    char c = file.read();
+    client.print(c);
+    count++;
+  }
+  file.close();
 }
 
 // for JSON
-void okResponse(WiFiClient client, String content)
-{
-    String responseHeaders = "HTTP/1.1 200 OK\n";
-    responseHeaders += "Access-Control-Allow-Origin: *\n";
-    responseHeaders += "Connection: Keep-Alive\n";
-    responseHeaders += "Keep-Alive: timeout=10, max=200\n";
-    responseHeaders += "Content-type: application/json \n";
-    responseHeaders += "Content-Length:" + String(content.length()) + "\n";
-    responseHeaders += "\n";
-    Serial.println(responseHeaders + "\n");
-    client.print(responseHeaders);
-    client.print(content);
+void okResponse(WiFiClient client, String content) {
+  String responseHeaders = "HTTP/1.1 200 OK\n";
+  responseHeaders += "Access-Control-Allow-Origin: *\n";
+  responseHeaders += "Connection: Keep-Alive\n";
+  responseHeaders += "Keep-Alive: timeout=10, max=200\n";
+  responseHeaders += "Content-type: application/json \n";
+  responseHeaders += "Content-Length:" + String(content.length()) + "\n";
+  responseHeaders += "\n";
+  Serial.println(responseHeaders + "\n");
+  client.print(responseHeaders);
+  client.print(content);
 }
 
-void badRequest(WiFiClient client)
-{
-    String content = "{\"response\" : \"Bad Request\"}";
-    String responseHeaders = "HTTP/1.1 400 Bad Request \n";
-    responseHeaders += "Access-Control-Allow-Origin: *\n";
-    responseHeaders += "Content-type: application/json \n";
-    responseHeaders += "Content-Length:" + String(content.length()) + "\n";
-    responseHeaders += "\n";
-    Serial.println(responseHeaders + "\n");
-    client.print(responseHeaders + content);
+void badRequest(WiFiClient client) {
+  String content = "{\"response\" : \"Bad Request\"}";
+  String responseHeaders = "HTTP/1.1 400 Bad Request \n";
+  responseHeaders += "Access-Control-Allow-Origin: *\n";
+  responseHeaders += "Content-type: application/json \n";
+  responseHeaders += "Content-Length:" + String(content.length()) + "\n";
+  responseHeaders += "\n";
+  Serial.println(responseHeaders + "\n");
+  client.print(responseHeaders + content);
 }
 
-void forbidden(WiFiClient client)
-{
-    String content = "{\"response\" : \" Forbidden\"}";
-    String responseHeaders = "HTTP/1.1 403 Forbidden \n";
-    responseHeaders += "Access-Control-Allow-Origin: *\n";
-    responseHeaders += "Content-type: application/json \n";
-    responseHeaders += "Content-Length:" + String(content.length()) + "\n";
-    responseHeaders += "\n";
-    Serial.println(responseHeaders + "\n");
-    client.print(responseHeaders + content);
+void forbidden(WiFiClient client) {
+  String content = "{\"response\" : \" Forbidden\"}";
+  String responseHeaders = "HTTP/1.1 403 Forbidden \n";
+  responseHeaders += "Access-Control-Allow-Origin: *\n";
+  responseHeaders += "Content-type: application/json \n";
+  responseHeaders += "Content-Length:" + String(content.length()) + "\n";
+  responseHeaders += "\n";
+  Serial.println(responseHeaders + "\n");
+  client.print(responseHeaders + content);
 }
 
-void notFoundResponse(WiFiClient client)
-{
-    String content = "{\"response\" : \"Not Found\"}";
-    String responseHeaders = "HTTP/1.1 404 Not Found \n";
-    responseHeaders += "Access-Control-Allow-Origin: *\n";
-    responseHeaders += "Content-type: application/json \n";
-    responseHeaders += "Content-Length:" + String(content.length()) + "\n";
-    responseHeaders += "\n";
-    Serial.println(responseHeaders + "\n");
-    client.print(responseHeaders + content);
+void notFoundResponse(WiFiClient client) {
+  String content = "{\"response\" : \"Not Found\"}";
+  String responseHeaders = "HTTP/1.1 404 Not Found \n";
+  responseHeaders += "Access-Control-Allow-Origin: *\n";
+  responseHeaders += "Content-type: application/json \n";
+  responseHeaders += "Content-Length:" + String(content.length()) + "\n";
+  responseHeaders += "\n";
+  Serial.println(responseHeaders + "\n");
+  client.print(responseHeaders + content);
 }
 
-void preFlightResponse(WiFiClient client)
-{
-    String responseHeaders = "HTTP/1.1 204 No Content\n";
-    responseHeaders += "Connection: Keep-Alive\n";
-    responseHeaders += "Keep-Alive: timeout=10, max=200\n";
-    responseHeaders += "Access-Control-Allow-Origin: *\n";
-    responseHeaders += "Access-Control-Allow-Methods: POST, GET\n";
-    responseHeaders += "Access-Control-Allow-Headers: access-control-allow-origin,content-disposition,content-type\n";
-    responseHeaders += "\n";
-    Serial.println(responseHeaders + "\n");
-    client.print(responseHeaders);
+void preFlightResponse(WiFiClient client) {
+  String responseHeaders = "HTTP/1.1 204 No Content\n";
+  responseHeaders += "Connection: Keep-Alive\n";
+  responseHeaders += "Keep-Alive: timeout=10, max=200\n";
+  responseHeaders += "Access-Control-Allow-Origin: *\n";
+  responseHeaders += "Access-Control-Allow-Methods: POST, GET\n";
+  responseHeaders += "Access-Control-Allow-Headers: access-control-allow-origin,content-disposition,content-type\n";
+  responseHeaders += "\n";
+  Serial.println(responseHeaders + "\n");
+  client.print(responseHeaders);
 }
 
-long uploadFile(WiFiClient client, String fileName)
-{
-    String path = pagesPath + fileName;
-    long bytes = 0;
-    if (LittleFS.exists(path))
-        LittleFS.remove(path);
-    File file = LittleFS.open(path, "w");
-    while (client.available())
-    {
-        char c = client.read();
-        file.print(c);
-        bytes++;
+long uploadFile(WiFiClient client, String fileName) {
+  String path = pagesPath + fileName;
+  long bytes = 0;
+  if (LittleFS.exists(path))
+    LittleFS.remove(path);
+  File file = LittleFS.open(path, "w");
+  while (client.available()) {
+    char c = client.read();
+    file.print(c);
+    bytes++;
+  }
+  file.close();
+  return bytes;
+}
+
+void handleClient(WiFiClient client, String requestHeaders) {
+  //preflight
+  if (requestHeaders.indexOf("OPTIONS /upload/") != -1) {
+    preFlightResponse(client);
+    return;
+  }
+  // upload pages
+  if (requestHeaders.indexOf("POST /upload/") != -1) {
+    if (requestHeaders.indexOf("text/html") == -1 || requestHeaders.indexOf("filename=") == -1) {
+      badRequest(client);
+      return;
     }
-    file.close();
-    return bytes;
-}
-
-void handleClient(WiFiClient client, String requestHeaders)
-{
-    // preflight
-    if (requestHeaders.indexOf("OPTIONS /upload/") != -1)
-    {
-        preFlightResponse(client);
-        return;
+    String name = extractFromString(requestHeaders, "/upload/", " HTTP");
+    long bytes = uploadFile(client, name);
+    String content = "{\"bytes\" : " + String(bytes) + "}";
+    okResponse(client, content);
+    return;
+  }
+  // delivery html index page
+  if (requestHeaders.indexOf("GET / ") != -1) {
+    String path = pagesPath + "index.html";
+    if (LittleFS.exists(path)) {
+      okResponse(client, path, "text/html");
+      return;
     }
-    // upload pages
-    if (requestHeaders.indexOf("POST /upload/") != -1)
-    {
-        if (requestHeaders.indexOf("text/html") == -1 || requestHeaders.indexOf("filename=") == -1)
-        {
-            badRequest(client);
-            return;
+  }
+  // devilery the others page
+  if (requestHeaders.indexOf("GET /pages/") != -1) {
+    Serial.println("pages");
+    String name = extractFromString(requestHeaders, "/pages/", " HTTP");
+    String path = pagesPath + name;
+    Serial.println(path);
+    if (LittleFS.exists(path)) {
+      okResponse(client, path, "text/html");
+      return;
+    }
+  }
+  // list all pages
+  if (requestHeaders.indexOf("GET /list/pages ") != -1) {
+    String content = "[";
+    File root = LittleFS.open(pagesPath, "r");
+    if (root && root.isDirectory()) {
+      File file = root.openNextFile();
+      if (file) {
+        content += "\"";
+        content += String(file.name());
+        content += "\"";
+        file = root.openNextFile();
+        while (file) {
+          content += ", \"";
+          content += String(file.name());
+          content += "\"";
+          file = root.openNextFile();
         }
-        String name = extractFromString(requestHeaders, "/upload/", " HTTP");
-        long bytes = uploadFile(client, name);
-        String content = "{\"bytes\" : " + String(bytes) + "}";
-        okResponse(client, content);
-        return;
+      }
     }
-    // delivery html index page
-    if (requestHeaders.indexOf("GET / ") != -1)
-    {
-        String path = pagesPath + "index.html";
-        if (LittleFS.exists(path))
-        {
-            okResponse(client, path, "text/html");
-            return;
-        }
-    }
-    // devilery the others page
-    if (requestHeaders.indexOf("GET /pages/") != -1)
-    {
-        Serial.println("pages");
-        String name = extractFromString(requestHeaders, "/pages/", " HTTP");
+    content += "]";
+    okResponse(client, content);
+    return;
+  }
+  // clear all pages
+  if (requestHeaders.indexOf("GET /clear/pages ") != -1) {
+    File root = LittleFS.open(pagesPath, "r");
+    if (root && root.isDirectory()) {
+      File file = root.openNextFile();
+      while (file) {
+        String name = String(file.name());
         String path = pagesPath + name;
-        Serial.println(path);
-        if (LittleFS.exists(path))
-        {
-            okResponse(client, path, "text/html");
-            return;
+        LittleFS.remove(path);
+        file = root.openNextFile();
+      }
+    }
+    okResponse(client);
+    return;
+  }
+  // list all record
+  if (requestHeaders.indexOf("GET /records ") != -1) {
+    String content = "[";
+    File root = LittleFS.open(recordsPath, "r");
+    if (root && root.isDirectory()) {
+      File file = root.openNextFile();
+      if (file) {
+        content += "\"";
+        content += String(file.name());
+        content += "\"";
+        file = root.openNextFile();
+        while (file) {
+          content += ", \"";
+          content += String(file.name());
+          content += "\"";
+          file = root.openNextFile();
         }
+      }
     }
-    // list all pages
-    if (requestHeaders.indexOf("GET /list/pages ") != -1)
-    {
-        String content = "[";
-        File root = LittleFS.open(pagesPath, "r");
-        if (root && root.isDirectory())
-        {
-            File file = root.openNextFile();
-            if (file)
-            {
-                content += "\"";
-                content += String(file.name());
-                content += "\"";
-                file = root.openNextFile();
-                while (file)
-                {
-                    content += ", \"";
-                    content += String(file.name());
-                    content += "\"";
-                    file = root.openNextFile();
-                }
-            }
-        }
-        content += "]";
-        okResponse(client, content);
-        return;
+    content += "]";
+    okResponse(client, content);
+    return;
+  }
+  // get a record (txt file)
+  if (requestHeaders.indexOf("GET /records/get?name=") != -1) {
+    String name = extractFromString(requestHeaders, "?name=", " HTTP");
+    String path = recordsPath + name;
+    if (LittleFS.exists(path)) {
+      okResponse(client, path, "text/plain");
+      return;
     }
-    // clear all pages
-    if (requestHeaders.indexOf("GET /clear/pages ") != -1)
-    {
-        File root = LittleFS.open(pagesPath, "r");
-        if (root && root.isDirectory())
-        {
-            File file = root.openNextFile();
-            while (file)
-            {
-                String name = String(file.name());
-                String path = pagesPath + name;
-                LittleFS.remove(path);
-                file = root.openNextFile();
-            }
-        }
-        okResponse(client);
-        return;
+  }
+  // delete a record
+  if (requestHeaders.indexOf("GET /records/del?name=") != -1) {
+    String name = extractFromString(requestHeaders, "?name=", " HTTP");
+    String path = recordsPath + name;
+    if (path.equals(slot.filePath)) {
+      forbidden(client);
+      return;
     }
-    // list all record
-    if (requestHeaders.indexOf("GET /records ") != -1)
-    {
-        String content = "[";
-        File root = LittleFS.open(recordsPath, "r");
-        if (root && root.isDirectory())
-        {
-            File file = root.openNextFile();
-            if (file)
-            {
-                content += "\"";
-                content += String(file.name());
-                content += "\"";
-                file = root.openNextFile();
-                while (file)
-                {
-                    content += ", \"";
-                    content += String(file.name());
-                    content += "\"";
-                    file = root.openNextFile();
-                }
-            }
-        }
-        content += "]";
-        okResponse(client, content);
-        return;
+    if (LittleFS.exists(path)) {
+      LittleFS.remove(path);
+      okResponse(client);
+      return;
     }
-    // get a record (txt file)
-    if (requestHeaders.indexOf("GET /records/get?name=") != -1)
-    {
-        String name = extractFromString(requestHeaders, "?name=", " HTTP");
-        String path = recordsPath + name;
-        if (LittleFS.exists(path))
-        {
-            okResponse(client, path, "text/plain");
-            return;
-        }
+  }
+  // start recording
+  if (requestHeaders.indexOf("GET /start?name=") != -1 && requestHeaders.indexOf("&time=") != -1) {
+    String name = extractFromString(requestHeaders, "?name=", "&");
+    int delay = extractFromString(requestHeaders, "&time=", " HTTP").toInt();
+    if (slot.recording) {
+      forbidden(client);
+      return;
     }
-    // delete a record
-    if (requestHeaders.indexOf("GET /records/del?name=") != -1)
-    {
-        String name = extractFromString(requestHeaders, "?name=", " HTTP");
-        String path = recordsPath + name;
-        if (path.equals(slot.filePath))
-        {
-            forbidden(client);
-            return;
-        }
-        if (LittleFS.exists(path))
-        {
-            LittleFS.remove(path);
-            okResponse(client);
-            return;
-        }
+    if (name.isEmpty() || name.length() > 20 || delay < 5000) {
+      badRequest(client);
+      return;
     }
-    // start recording
-    if (requestHeaders.indexOf("GET /start?name=") != -1 && requestHeaders.indexOf("&time=") != -1)
-    {
-        String name = extractFromString(requestHeaders, "?name=", "&");
-        int delay = extractFromString(requestHeaders, "&time=", " HTTP").toInt();
-        if (slot.recording)
-        {
-            forbidden(client);
-            return;
-        }
-        if (name.isEmpty() || name.length() > 20 || delay < 5000)
-        {
-            badRequest(client);
-            return;
-        }
-        String path = recordsPath + name;
-        if (LittleFS.exists(path))
-        {
-            forbidden(client);
-            return;
-        }
-        slot.filePath = path;
-        slot.delay = delay;
-        slot.recording = true;
-        recording();
-        okResponse(client);
-        return;
+    String path = recordsPath + name;
+    if (LittleFS.exists(path)) {
+      forbidden(client);
+      return;
     }
-    // stop recording
-    if (requestHeaders.indexOf("GET /stop") != -1)
-    {
-        if (!slot.recording)
-        {
-            badRequest(client);
-            return;
-        }
-        slot.filePath = "";
-        slot.time = 0;
-        slot.delay = 0;
-        slot.recording = false;
-        okResponse(client);
-        return;
+    slot.filePath = path;
+    slot.delay = delay;
+    slot.recording = true;
+    recording();
+    okResponse(client);
+    return;
+  }
+  // stop recording
+  if (requestHeaders.indexOf("GET /stop") != -1) {
+    if (!slot.recording) {
+      badRequest(client);
+      return;
     }
-    // get readings
-    if (requestHeaders.indexOf("GET /readings") != -1)
-    {
-        LittleFS.info(fsInfo);
-        String content = "{\"storage\" : " + String(storage);
-        content += ", \"recording\" : " + String((slot.recording) ? "true" : "false");
-        content += ", \"millivolts\" : " + String(getPotentialInMilliVolts());
-        content += "}";
-        okResponse(client, content);
-        return;
+    slot.filePath = "";
+    slot.time = 0;
+    slot.delay = 0;
+    slot.recording = false;
+    okResponse(client);
+    return;
+  }
+  //get readings
+  if (requestHeaders.indexOf("GET /readings") != -1) {
+    LittleFS.info(fsInfo);
+    String content = "{\"storage\" : " + String(storage);
+    content += ", \"recording\" : " + String((slot.recording) ? "true" : "false");
+    content += ", \"millivolts\" : " + String(getPotentialInMilliVolts());
+    content += "}";
+    okResponse(client, content);
+    return;
+  }
+  //get calibration coefficients
+  if (requestHeaders.indexOf("GET /cal/get") != -1) {
+    String content = "{\"lc\" : " + String(cal.lc);
+    content += ", \"ac\" : " + String(cal.ac);
+    content += "}";
+    okResponse(client, content);
+    return;
+  }
+  //reset calibration
+  if (requestHeaders.indexOf("GET /cal/reset") != -1) {
+    String path;
+    path = calPath + "ac.txt";
+    if (LittleFS.exists(path)) {
+      LittleFS.remove(path);
+      cal.ac = 1;
     }
-    // get calibration coefficients
-    if (requestHeaders.indexOf("GET /cal/get") != -1)
-    {
-        String content = "{\"lc\" : " + String(cal.lc);
-        content += ", \"ac\" : " + String(cal.ac);
-        content += "}";
-        okResponse(client, content);
-        return;
+    path = calPath + "lc.txt";
+    if (LittleFS.exists(path)) {
+      LittleFS.remove(path);
+      cal.lc = 0;
     }
-    // reset calibration
-    if (requestHeaders.indexOf("GET /cal/reset") != -1)
-    {
-        String path;
-        path = calPath + "ac.txt";
-        if (LittleFS.exists(path))
-        {
-            LittleFS.remove(path);
-            cal.ac = 1;
-        }
-        path = calPath + "lc.txt";
-        if (LittleFS.exists(path))
-        {
-            LittleFS.remove(path);
-            cal.lc = 0;
-        }
-        setCalibration();
-        okResponse(client);
-        return;
-    }
-    // set calibration coefficients
-    if (requestHeaders.indexOf("GET /cal/set?ac=") != -1 && requestHeaders.indexOf("&lc=") != -1)
-    {
-        float ac = extractFromString(requestHeaders, "?ac=", "&").toFloat();
-        float lc = extractFromString(requestHeaders, "&lc=", " HTTP").toFloat();
-        // lc can be zero, but ac can`t
-        if (ac == 0)
-        {
-            badRequest(client);
-            return;
-        }
-        String path;
-        File file;
-        path = calPath + "lc.txt";
-        file = LittleFS.open(path, "w");
-        file.println(lc);
-        file.close();
-        path = calPath + "ac.txt";
-        file = LittleFS.open(path, "w");
-        file.println(ac);
-        file.close();
-        setCalibration();
-        okResponse(client);
-        return;
-    }
-
-    notFoundResponse(client);
-}
-
-void setup()
-{
-    Serial.begin(115200);
-    if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
-    {
-        Serial.println("Display initialization failed");
-        while (true)
-            ;
-    }
-    // init display timer
-    displayTimer = millis();
-    display.clearDisplay();
-    display.display();
-    if (!LittleFS.begin())
-    {
-        Serial.println("LittleFS Mount Failed");
-        while (true)
-            ;
-    }
-    WiFi.setSleepMode(WIFI_NONE_SLEEP);
-    if (!WiFi.softAP("Voltimeter(esp8266)", "0123456789", 1, 0, 1))
-    {
-        Serial.println("Webserver failed starting...");
-        return;
-    }
-    ip = WiFi.softAPIP().toString();
-    Serial.print("Soft-AP IP address = ");
-    Serial.println(ip); // standard ip = 192.168.4.1
-    Serial.println("Webserver started...");
-    server.begin();
     setCalibration();
+    okResponse(client);
+    return;
+  }
+  //set calibration coefficients
+  if (requestHeaders.indexOf("GET /cal/set?ac=") != -1 && requestHeaders.indexOf("&lc=") != -1) {
+    float ac = extractFromString(requestHeaders, "?ac=", "&").toFloat();
+    float lc = extractFromString(requestHeaders, "&lc=", " HTTP").toFloat();
+    //lc can be zero, but ac can`t
+    if (ac == 0) {
+      badRequest(client);
+      return;
+    }
+    String path;
+    File file;
+    path = calPath + "lc.txt";
+    file = LittleFS.open(path, "w");
+    file.println(lc);
+    file.close();
+    path = calPath + "ac.txt";
+    file = LittleFS.open(path, "w");
+    file.println(ac);
+    file.close();
+    setCalibration();
+    okResponse(client);
+    return;
+  }
+
+  notFoundResponse(client);
 }
 
-void loop()
-{
-    hasClientConnectedToWiFi();
-    WiFiClient client = server.available();
-    if (client)
-    {
-        String headers = "";
-        Serial.println("new client connected...");
-        // an http request header ends with a blank line
-        bool currentLineIsBlank = true;
-        while (client.connected())
-        {
-            if (client.available())
-            {
-                char c = client.read();
-                headers += c;
-                Serial.print(c);
-                // if you've gotten to the end of the line (received a newline
-                // character) and the line is blank, the http request header has ended,
-                // so you can send a reply
-                if (c == '\n' && currentLineIsBlank)
-                {
-                    handleClient(client, headers);
-                    break;
-                }
-                if (c == '\n')
-                {
-                    currentLineIsBlank = true;
-                }
-                else if (c != '\r')
-                {
-                    currentLineIsBlank = false;
-                }
-            }
+void setup() {
+  Serial.begin(115200);
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println("Display initialization failed");
+    while (true)
+      ;
+  }
+  //init display timer
+  displayTimer = millis();
+  display.clearDisplay();
+  display.display();
+  if (!LittleFS.begin()) {
+    Serial.println("LittleFS Mount Failed");
+    while (true)
+      ;
+  }
+  WiFi.setSleepMode(WIFI_NONE_SLEEP);
+  if (!WiFi.softAP(SSID, "0123456789", 1, 0, 1)) {
+    Serial.println("Webserver failed starting...");
+    return;
+  }
+  ip = WiFi.softAPIP().toString();
+  Serial.print("Soft-AP IP address = ");
+  Serial.println(ip);  // standard ip = 192.168.4.1
+  Serial.println("Webserver started...");
+  server.begin();
+  setCalibration();
+}
+
+void loop() {
+  hasClientConnectedToWiFi();
+  WiFiClient client = server.available();
+  if (client) {
+    String headers = "";
+    Serial.println("new client connected...");
+    // an http request header ends with a blank line
+    bool currentLineIsBlank = true;
+    while (client.connected()) {
+      if (client.available()) {
+        char c = client.read();
+        headers += c;
+        Serial.print(c);
+        // if you've gotten to the end of the line (received a newline
+        // character) and the line is blank, the http request header has ended,
+        // so you can send a reply
+        if (c == '\n' && currentLineIsBlank) {
+          handleClient(client, headers);
+          break;
         }
-        // give time to the browser
-        delay(500);
-        // close the connection:
-        client.stop();
-        Serial.println("client disconnected...");
+        if (c == '\n') {
+          currentLineIsBlank = true;
+        } else if (c != '\r') {
+          currentLineIsBlank = false;
+        }
+      }
     }
-    updateStorageInfo();
-    checkForPrintDisplay();
-    checkForRecording();
-    delay(100);
+    // give time to the browser
+    delay(500);
+    // close the connection:
+    client.stop();
+    Serial.println("client disconnected...");
+  }
+  updateStorageInfo();
+  checkForPrintDisplay();
+  checkForRecording();
+  delay(100);
 }
