@@ -16,7 +16,7 @@ Adafruit_SSD1306 display(124, 64, &Wire, -1);
 // Store the FS storage info
 FSInfo fsInfo;
 
-const String SSID = "Voltimeter_001";
+const String SSID = "Choose a SSID";
 const String calPath = "/cal/";
 const String recordsPath = "/records/";
 const String pagesPath = "/pages/";

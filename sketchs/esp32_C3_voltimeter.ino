@@ -32,7 +32,7 @@ RecordingSlot slot;
 Calibration cal;
 
 String ip;
-const String SSID = "Voltimeter_002";
+const String SSID = "Choose a SSID";
 const String calPath = "/cal/";
 const String recordsPath = "/records/";
 const String pagesPath = "/pages/";
