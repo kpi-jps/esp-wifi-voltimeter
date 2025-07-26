@@ -16,7 +16,7 @@ Adafruit_SSD1306 display(124, 64, &Wire, -1);
 // Store the FS storage info
 FSInfo fsInfo;
 
-const String SSID = "Choose a SSID";
+const String SSID = "Voltmeter_1";
 const String calPath = "/cal/";
 const String recordsPath = "/records/";
 const String pagesPath = "/pages/";
@@ -26,6 +26,7 @@ struct RecordingSlot {
   String filePath = "";
   unsigned long time = 0;
   unsigned long delay = 0;
+  unsigned long countTime = 0;
   bool recording = false;
 };
 
@@ -133,7 +134,7 @@ void hasClientConnectedToWiFi() {
 void recording() {
   String path = slot.filePath;
   int v = getPotentialInMilliVolts();
-  String content = String(slot.time) + ";" + String(v) + "\n";
+  String content = String(slot.countTime) + ";" + String(v);
   File file = LittleFS.open(path, "a");
   file.println(content);
   file.close();
@@ -142,7 +143,8 @@ void recording() {
 void checkForRecording() {
   long time = millis() - slot.time;
   if (slot.recording && time >= slot.delay) {
-    slot.time += time;
+    slot.time = millis();
+    slot.countTime += slot.delay;
     recording();
   }
 }
@@ -404,6 +406,8 @@ void handleClient(WiFiClient client, String requestHeaders) {
     }
     slot.filePath = path;
     slot.delay = delay;
+    slot.time = millis();
+    slot.countTime = 0;
     slot.recording = true;
     recording();
     okResponse(client);
