@@ -16,8 +16,9 @@ Adafruit_SSD1306 display(124, 64, &Wire, -1);
 // Store the FS storage info
 FSInfo fsInfo;
 
-const String SSID = "Voltmeter_1";
+const String SSID = "Voltmeter_0";
 const String calPath = "/cal/";
+const String configPath = "/config/";
 const String recordsPath = "/records/";
 const String pagesPath = "/pages/";
 String ip;
@@ -35,10 +36,12 @@ struct Calibration {
   float ac = 1;  //angular coefficient
 };
 
+
 //percent of free storage
 unsigned long storage = 0;
 RecordingSlot slot;
 Calibration cal;
+WiFiConfig config;
 
 const long updateDisplayDelay = 2000;
 long displayTimer = 0;
@@ -459,6 +462,8 @@ void handleClient(WiFiClient client, String requestHeaders) {
     }
     setCalibration();
     okResponse(client);
+    delay(1000);
+    ESP.restart();
     return;
   }
   //set calibration coefficients
@@ -482,6 +487,8 @@ void handleClient(WiFiClient client, String requestHeaders) {
     file.close();
     setCalibration();
     okResponse(client);
+    delay(1000);
+    ESP.restart();
     return;
   }
 
