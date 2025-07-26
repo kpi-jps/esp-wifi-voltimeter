@@ -6,9 +6,9 @@
 #include <Adafruit_SSD1306.h>
 
 
-const int analogPin = 0;                //A0
-const int sdaPin = 4;                   // D2
-const int sclPin = 5;                   //D1
+const int analogPin = 0;  //A0
+const int sdaPin = 4;     // D2
+const int sclPin = 5;     //D1
 
 // for 128x64 displays:
 Adafruit_SSD1306 display(124, 64, &Wire, -1);
@@ -16,7 +16,7 @@ Adafruit_SSD1306 display(124, 64, &Wire, -1);
 // Store the FS storage info
 FSInfo fsInfo;
 
-const String SSID = "Voltmeter_0";
+
 const String calPath = "/cal/";
 const String configPath = "/config/";
 const String recordsPath = "/records/";
@@ -36,12 +36,11 @@ struct Calibration {
   float ac = 1;  //angular coefficient
 };
 
-
 //percent of free storage
 unsigned long storage = 0;
 RecordingSlot slot;
 Calibration cal;
-WiFiConfig config;
+String ssid;
 
 const long updateDisplayDelay = 2000;
 long displayTimer = 0;
@@ -66,6 +65,21 @@ void setCalibration() {
     file.close();
     cal.ac = (ac != 0) ? ac : 0;
   }
+}
+
+void setWifiConfig() {
+  String path;
+  path = configPath + "ssid.txt";
+  if (LittleFS.exists(path)) {
+    File file = LittleFS.open(path, "r");
+    ssid = file.readString();
+    file.close();
+    return;
+  }
+  ssid = "Voltmeter" + String(random(0, 10000));
+  File file = LittleFS.open(path, "w");
+  file.println(ssid);
+  file.close();
 }
 
 void updateStorageInfo() {
@@ -101,7 +115,7 @@ void printInDisplay() {
   display.setTextSize(1);
   //printing SSID
   display.setCursor(0, 1);
-  display.print(SSID);
+  display.print(ssid);
   //printing ip
   display.setCursor(0, 9);
   display.print(ip);
@@ -492,6 +506,48 @@ void handleClient(WiFiClient client, String requestHeaders) {
     return;
   }
 
+  //set wifi ssid
+  if (requestHeaders.indexOf("GET /wifi/set?ssid=") != -1) {
+    if(slot.recording) {
+      forbidden(client);
+      return;
+    }
+    String ssid = extractFromString(requestHeaders, "?ssid="," HTTP");
+    ssid.trim();
+    if(ssid.isEmpty()) {
+      badRequest(client);
+      return;
+    }
+    String path;
+    File file;
+    path = configPath + "ssid.txt";
+    file = LittleFS.open(path, "w");
+    file.println(ssid);
+    file.close();
+    okResponse(client);
+    delay(1000);
+    ESP.restart();
+    return;
+  }
+
+  //reset wifi ssid
+  if (requestHeaders.indexOf("GET /wifi/reset") != -1) {
+    if(slot.recording) {
+      forbidden(client);
+      return;
+    }
+    String path;
+    path = configPath + "ssid.txt";
+    if (LittleFS.exists(path)) {
+      LittleFS.remove(path);
+    }
+    setWifiConfig();
+    okResponse(client);
+    delay(1000);
+    ESP.restart();
+    return;
+  }
+
   notFoundResponse(client);
 }
 
@@ -511,8 +567,9 @@ void setup() {
     while (true)
       ;
   }
+  setWifiConfig();
   WiFi.setSleepMode(WIFI_NONE_SLEEP);
-  if (!WiFi.softAP(SSID, "0123456789", 1, 0, 1)) {
+  if (!WiFi.softAP(ssid, "", 1, 0, 1)) {
     Serial.println("Webserver failed starting...");
     return;
   }
