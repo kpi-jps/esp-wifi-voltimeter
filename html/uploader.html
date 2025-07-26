@@ -146,6 +146,10 @@
                 mode: "cors"
             })
             console.log(response);
+            if (response.status === 500) {
+                alert("Something went wrong, update the file again!")
+                return
+            }
             if (response.ok) {
                 clearInterval(interval)
                 uploadInfo.innerText = ""
@@ -153,7 +157,7 @@
             }
             const json = await response.json();
             console.log(json)
-            if (file.size !== json.bytes) alert("Something went wrong, update the file again!")
+            
         } catch (error) {
             console.log(error)
             clearInterval(interval)
