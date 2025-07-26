@@ -463,6 +463,10 @@ void handleClient(WiFiClient client, String requestHeaders) {
   }
   //reset calibration
   if (requestHeaders.indexOf("GET /cal/reset") != -1) {
+    if(slot.recording) {
+      forbidden(client);
+      return;
+    }
     String path;
     path = calPath + "ac.txt";
     if (LittleFS.exists(path)) {
@@ -482,6 +486,10 @@ void handleClient(WiFiClient client, String requestHeaders) {
   }
   //set calibration coefficients
   if (requestHeaders.indexOf("GET /cal/set?ac=") != -1 && requestHeaders.indexOf("&lc=") != -1) {
+    if(slot.recording) {
+      forbidden(client);
+      return;
+    }
     float ac = extractFromString(requestHeaders, "?ac=", "&").toFloat();
     float lc = extractFromString(requestHeaders, "&lc=", " HTTP").toFloat();
     //lc can be zero, but ac can`t
