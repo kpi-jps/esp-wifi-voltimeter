@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSID Configurator</title>
+    <style>
+        body,
+        button,
+        input {
+            font-family: Verdana, Geneva, Tahoma, sans-serif;
+            font-size: 1rem;
+        }
+
+        a {
+            text-decoration: none;
+        }
+
+        input[type=text] {
+            border: 0;
+            border-bottom: 3px solid black;
+            width: 4ch;
+        }
+
+        body {
+            width: 600px;
+            margin: 5px auto;
+            border: 0 solid black;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        form {
+            margin: 0 auto;
+        }
+
+        .row {
+            padding: 10px 0;
+            margin: 10px 0;
+        }
+
+        button,
+        a {
+            padding: 10px;
+            border: 3px solid black;
+            border-radius: 5px;
+            background-color: black;
+            color: rgb(249, 248, 248);
+            font-weight: bold;
+        }
+
+        button:hover,
+        a:hover {
+            background-color: rgb(249, 248, 248);
+            color: black;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>SSID Configurator</h2>
+    <form>
+        <div class="row input">
+            SSID:
+            <input type="text" id="ssid" value="new_ssid">
+        </div>
+        <div class="row">
+            <button id="set" class="input"> Set </button>
+            <button id="reset" class="input"> Reset </button>
+        </div>
+    </form>
+
+</body>
+
+<script>
+    window.addEventListener("load", async (e) => {
+        const mainUrl = "http://192.168.4.1/"
+        const ssid = document.getElementById("ssid")
+
+        function inputFitContent(input) {
+            if (input && input.tagName === "INPUT" && input.type === "text") {
+                if (input.value.length === 0) {
+                    input.style.width = "3ch"
+                    return
+                }
+                input.style.width = input.value.length + "ch"
+                return
+            }
+            throw new Error("The html element got by id is null, undefined or isn't an input type text")
+        }
+
+        ssid.addEventListener("input", () => inputFitContent(ssid))
+
+        document.getElementById("reset").addEventListener("click", async (e) => {
+            e.preventDefault()
+            try {
+                const url = mainUrl + "wifi/reset"
+                const response = await fetch(url)
+                if (response.ok) {
+                    alert("SSID reseted!");
+                    window.location.reload()
+                    return
+                }
+                alert("Something went wrong!")
+
+            } catch (error) {
+                console.log(error)
+            }
+        })
+
+        document.getElementById("set").addEventListener("click", async (e) => {
+            e.preventDefault()
+            try {
+                if (!ssid.value) {
+                    alert("SSID cannot be empty!")
+                    return
+                }
+                const url = `${mainUrl}wifi/set?ssid=${ssid.value}`
+                const response = await fetch(url)
+                if (response.ok) alert("SSID defined!")
+                window.close()
+
+            } catch (error) {
+                console.log(error)
+            }
+        })
+
+        inputFitContent(ssid)
+
+    })
+
+
+
+</script>
+
+</html>
