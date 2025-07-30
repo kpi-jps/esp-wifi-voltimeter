@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voltmeter Linear Calibrator</title>
+    <title>Voltmeter Calibrator</title>
     <style>
         body,
         button,
@@ -59,7 +59,7 @@
 </head>
 
 <body>
-    <h2>Voltimeter Linear Calibrator</h2>
+    <h2>Voltmeter Calibrator</h2>
     <form>
         <div class="row input">
             Angular coefficient (ac):
@@ -129,7 +129,7 @@
             try {
                 const url = mainUrl + "cal/reset"
                 const response = await fetch(url)
-                if(response.ok) {
+                if (response.ok) {
                     alert("Calibration reseted!");
                     window.location.reload()
                     return
@@ -144,17 +144,14 @@
         document.getElementById("cal").addEventListener("click", async (e) => {
             e.preventDefault()
             try {
-                if(!ac.value || !lc.value) {
+                if (!ac.value || !lc.value) {
                     console.log(ac)
                     console.log(lc)
                     alert("ac and/or lc cannot be empty!")
                 }
                 const url = `${mainUrl}cal/set?ac=${ac.value}&lc=${lc.value}`
                 const response = await fetch(url)
-                if(response.ok) {
-                    alert("Calibration done!")
-                    window.location.reload()
-                }
+                if (response.ok) alert("Calibration done!")
 
             } catch (error) {
                 console.log(error)
@@ -162,7 +159,7 @@
         })
 
         const response = await fetch(mainUrl + "cal/get")
-        if(response.ok) {
+        if (response.ok) {
             const json = await response.json()
             console.log(json)
             ac.value = json.ac
