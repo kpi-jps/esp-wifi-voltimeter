@@ -314,7 +314,7 @@ void preFlightResponse(WiFiClient client)
   client.print(responseHeaders);
 }
 
-long uploadFile(WiFiClient client, String fileName)
+long uploadFile(WiFiClient client, String fileName, long bytesSent)
 {
   String path = pagesPath + fileName;
   long bytes = 0;
@@ -326,6 +326,11 @@ long uploadFile(WiFiClient client, String fileName)
     char c = client.read();
     file.print(c);
     bytes++;
+  }
+  if (bytes != bytesSent)
+  {
+    LittleFS.remove(path);
+    return -1;
   }
   file.close();
   return bytes;
@@ -351,7 +356,7 @@ void handleClient(WiFiClient client, String requestHeaders)
     String contentLength = extractFromString(requestHeaders, "Content-Length:");
     contentLength.trim();
     long bytesSent = contentLength.toInt();
-    long bytes = uploadFile(client, name);
+    long bytes = uploadFile(client, name, bytesSent);
     if (bytesSent == bytes)
     {
       String content = "{\"bytes\" : " + String(bytes) + "}";
